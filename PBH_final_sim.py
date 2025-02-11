@@ -131,48 +131,6 @@ class EU_formation_sim():
         
         
         
-        def Run_simulation(self,
-                           Set_Particles_rigidly = True,
-                           Set_particles_from_density = False):
-            
-            """Im assuming the Simulation is of a sphere"""
-            
-            '''
-            Args:
-                SF_list
-                
-                    Particle_list (either or)
-                    Density_parameters (either or)
-                    
-                Collapse_threshold
-                
-                Sim_radius
-                
-                Sim_matter_dist
-                
-                Sim_amplitudes       
-            
-            '''
-        
-            if Set_Particles_rigidly == True & Set_particles_from_density == False:
-                print("Ok, so you want a set amount of particles")
-                print(f"Creating {self.N_particles} particles")
-                
-                self.Create_particles()
-            
-            elif Set_particles_from_density == True & Set_Particles_rigidly == False:
-                
-                Rho_r_a, \
-                Rho_m_a, \
-                Rho_de_a,\
-                initial_SF_dot = scale_back_initial(self.Pars[4], self.Start_sf, self.Pars[5],  self.Pars[2], self.Pars[1], self.Pars[3])
-                                
-                                        # Rho_m    Rho_r   Rho_l
-                self.Create_particles_from_Pars(Rho_m = Rho_m_a, Rho_r = Rho_r_a, Rho_de = Rho_de_a)
-                
-        
-        print("Scaling back parameters:")
-        
         def Run_simulation(self, Set_Particles_rigidly=True, Set_particles_from_density=False):
             """Run the simulation with the specified parameters"""
 
