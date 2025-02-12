@@ -938,7 +938,7 @@ class N_Bod():
             return scatters
     
         # Create a unique filename for saving the animation.
-        directory = r'C:\Users\Kiran\Desktop\PBH project\PBH_sim'
+        directory = r'C:\Users\Kiran\Desktop\PBh\PBH_sim'
         file_name = 'n_body'
         file_extension = '.gif'
         number = 1
