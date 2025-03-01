@@ -573,48 +573,51 @@ class N_Bod():
         
         self.simulate(Particles_list, self.Time, self.dt, self.Sf_list,self.SF_dot_list )
 
-    def scale_back_initial(self, a, Omega_r0, Omega_m0, Omega_de0):
+    def scale_back_initial(self, initial_hubble, a, a_ref=1.0, Omega_r_ref=8.24e-5, Omega_m_ref=0.27, Omega_de_ref=0.73):
         """
-        Scales back the Planck 2018 density parameters from their present-day values 
-        (at a0 = 1) to a chosen scale factor a.
+        Scales density parameters from their reference values at scale factor a_ref to a new scale factor a.
     
         Parameters:
-            a         : float
-                        Desired scale factor (e.g., a < 1 for earlier times)
-            Omega_r0  : float
-                        Present-day radiation density parameter (e.g., ~5e-5)
-            Omega_m0  : float
-                        Present-day matter density parameter (e.g., ~0.315)
-            Omega_de0 : float
-                        Present-day dark energy density parameter (e.g., ~0.685)
-    
+            initial_hubble : float
+                Hubble parameter at the reference scale factor a_ref.
+            a            : float
+                The desired scale factor at which to compute the densities.
+            a_ref        : float, optional
+                The reference scale factor for the input density parameters (default is 1).
+            Omega_r_ref  : float, optional
+                Radiation density parameter at a_ref (e.g., ~8.24e-5).
+            Omega_m_ref  : float, optional
+                Matter density parameter at a_ref (e.g., ~0.27).
+            Omega_de_ref : float, optional
+                Dark energy density parameter at a_ref (e.g., ~0.73).
+            
         Returns:
-            A tuple of the scaled fractional density parameters at scale factor a:
-                (Omega_r(a), Omega_m(a), Omega_de(a))
+            tuple:
+                (rad_scaled, matter_scaled, DE_scaled, SFdot_0)
+                where rad_scaled, matter_scaled, and DE_scaled are the energy densities at scale factor a,
+                and SFdot_0 is the corresponding scale factor derivative computed via H(a)*a.
         """
-        # Scale the density parameters using the appropriate powers of a
-        rad_scaled = Omega_r0 * a**(-4)
-        matter_scaled = Omega_m0 * a**(-3)
-        DE_scaled = Omega_de0  # constant in time
+        # Compute the critical density at the reference scale factor.
+        rho_crit_ref = (3 * initial_hubble**2) / (8 *cp.pi * self.G)
     
-        # Total (unnormalized) density parameter at scale factor a
-        total = rad_scaled + matter_scaled + DE_scaled
+        # Compute the actual densities at the reference scale factor.
+        rho_r_ref = Omega_r_ref * rho_crit_ref
+        rho_m_ref = Omega_m_ref * rho_crit_ref
+        rho_de_ref = Omega_de_ref * rho_crit_ref  # dark energy is constant
     
-        # Renormalize so that they sum to 1
-        Omega_r_a = rad_scaled / total
-        Omega_m_a = matter_scaled / total
-        Omega_de_a = DE_scaled / total  
-            # Compute the initial Hubble parameter
-        H_0 = cp.sqrt((8 * cp.pi * self.G / 3) * (Omega_r_a + Omega_m_a + Omega_de_a))
+        # Scale the densities to the new scale factor 'a'
+        rad_scaled   = rho_r_ref * (a_ref / a)**4
+        matter_scaled = rho_m_ref * (a_ref / a)**3
+        DE_scaled    = rho_de_ref  # no scaling for dark energy
+    
+        # Compute the Hubble parameter at scale factor a.
+        H_a = cp.sqrt((8 * cp.pi * self.G / 3) * (rad_scaled + matter_scaled + DE_scaled))
+    
+        # Compute the derivative of the scale factor.
+        SFdot_0 = H_a * a
+    
+        return rad_scaled, matter_scaled, DE_scaled, SFdot_0
 
-        # Compute SFdot_0
-        SFdot_0 = H_0 * a
-        
-        print(Omega_r_a)
-        print(Omega_m_a)
-        print(Omega_de_a)
-        
-        return Omega_r_a, Omega_m_a, Omega_de_a, SFdot_0  
         
         
         
@@ -655,75 +658,61 @@ class N_Bod():
         self.data_amt = int(Time/dt) # to make sure that the this doesnt run to 7.5 steps
         
         #print(f"amt of data steps : {self.data_amt}")
-        time = cp.linspace(0, Time, self.data_amt)
+        time = cp.linspace(0, Time, self.data_amt, dtype=cp.float64)
         
-        self.Matter_density_pars = cp.zeros(self.data_amt)
-        self.Rad_density_pars = cp.zeros(self.data_amt)
-        self.DE_density_pars = cp.zeros(self.data_amt)
+        self.Matter_density = cp.zeros(self.data_amt, dtype=cp.float64)
+        self.Rad_density = cp.zeros(self.data_amt, dtype=cp.float64)
+        self.DE_density = cp.zeros(self.data_amt, dtype=cp.float64)
                 
-        self.Scale_factor_dots = cp.zeros(self.data_amt)
-        self.Scale_factors = cp.zeros(self.data_amt)
-        self.Hubbles = cp.zeros(self.data_amt)
+        self.Scale_factor_dots = cp.zeros(self.data_amt, dtype=cp.float64)
+        self.Scale_factors = cp.zeros(self.data_amt, dtype=cp.float64)
+        self.Hubbles = cp.zeros(self.data_amt, dtype=cp.float64)
         
-        Omega_r_a, Omega_m_a, Omega_de_a, self.initial_SF_dot = self.scale_back_initial(Initial_SF, 8.24e-5, 0.27, 0.73)
+        Rho_r_a, Rho_m_a, Rho_de_a, self.initial_SF_dot = self.scale_back_initial(2.19e-18, Initial_SF, 1/1101 ,  8.24e-5, 0.27, 0.73)
         
-        self.Matter_density_pars[0] = Omega_m_a
-        self.Rad_density_pars[0] = Omega_r_a
-        self.DE_density_pars[0] = Omega_de_a
+        self.Matter_density[0] = Rho_m_a
+        self.Rad_density[0] = Rho_r_a
+        self.DE_density[0] = Rho_de_a
 
         self.Scale_factors[0] = Initial_SF
-        self.Scale_factor_dots[0] = self.initial_SF_dot
         
-        #(Initial_SF/Initial_SFdot) *
-        
-        
-        H_0 = self.initial_SF_dot/Initial_SF
-        
-        self.Hubbles[0] = H_0 * cp.sqrt((8 * cp.pi * self.G / 3) * (self.Rad_density_pars[0] + self.Matter_density_pars[0] + self.DE_density_pars[0]))
+        self.Hubbles[0] = cp.sqrt((8 * cp.pi * self.G / 3) * (self.Rad_density[0] + self.Matter_density[0] + self.DE_density[0]))
         # a_dot = a(t) * H_o * sqrt( Init_mass_dp(sf_i/sf(t))^2  + Init_rad_dp(sf_i/sf(t))^2  = Init_DE_dp)
         # a = a_dot * sqrt(delta_t) as I am focussing on the radiaton dominated universe
 
 
+        def f(a): 
+            sf_dot = a * cp.sqrt(((8 * cp.pi * self.G)/3)  * (self.Rad_density[0] * ((self.Initial_SF/a)**4)
+                                        + self.Matter_density[0] * ((self.Initial_SF/a)**3)
+                                        + self.DE_density[0]))
+            return sf_dot
         
 
+
+        self.Scale_factor_dots[0] = f(self.Scale_factors[0])
+        
+        print("*************************************************************************")
+        print(f"initial_SF_DOT is {self.Scale_factor_dots[0]}")
+        print("*************************************************************************")
 
         for i in range(1, self.data_amt):
     
             sf = self.Scale_factors[i-1]
-            sf_dot = self.Scale_factor_dots[i-1]
             H = self.Hubbles[i-1]
 
-    
-            sfRK1 = dt * sf_dot
-            sfdRK1 = sf * H * cp.sqrt(self.Rad_density_pars[0] * ((self.Initial_SF/sf)**4)
-                                        + self.Matter_density_pars[0] * ((self.Initial_SF/sf)**3)
-                                        + self.DE_density_pars[0])
-    
-            sfRK2 = dt * (sf_dot + 0.5 * sfdRK1)
-            sfdRK2 = (sf + 0.5 * sfRK1) * H * cp.sqrt(self.Rad_density_pars[0] * ((self.Initial_SF/(sf + 0.5 * sfRK1))**4)
-                                        + self.Matter_density_pars[0] * ((self.Initial_SF/(sf + 0.5 * sfRK1))**3)
-                                        +  self.DE_density_pars[0])
-    
-            sfRK3 = dt * (sf_dot + 0.5 * sfdRK2)
-            sfdRK3 = (sf + 0.5 * sfRK2) * H * cp.sqrt(self.Rad_density_pars[0] * ((self.Initial_SF/(sf + 0.5 * sfRK2))**4)
-                                        + self.Matter_density_pars[0] * ((self.Initial_SF/(sf + 0.5 * sfRK2))**3)
-                                        +  self.DE_density_pars[0])
-    
-            sfRK4 = dt * (sf_dot + 0.5 * sfdRK3)
-            sfdRK4 = (sf + sfRK4) * H * cp.sqrt(self.Rad_density_pars[0] * ((self.Initial_SF/(sf + sfRK4))**4)
-                                        + self.Matter_density_pars[0] * ((self.Initial_SF/(sf + sfRK4))**3)
-                                        +  self.DE_density_pars[0])
-    
-            self.Scale_factors[i] = sf + (sfRK1 + 2 * sfRK2 + 2 * sfRK3 + sfRK4) / 6
-            self.Scale_factor_dots[i] = sf_dot + (sfdRK1 + 2 * sfdRK2 + 2 * sfdRK3 + sfdRK4) / 6            
-            
-            self.Hubbles[i] = cp.sqrt(((8*cp.pi*self.G)/3) * (
-                self.Rad_density_pars[0]*(self.Initial_SF/self.Scale_factors[i])**4 +
-                self.Matter_density_pars[0]*(self.Initial_SF/self.Scale_factors[i])**3 +
-                self.DE_density_pars[0]
-            ))
-                        
-            print(f"Scale_factor: {self.Scale_factors[i]}------ SF_dot: {self.Scale_factor_dots[i]} ----------- Hubble: {self.Scale_factor_dots[i]/self.Scale_factors[i]}")
+            sfRK1 = dt * f(sf)
+            sfRK2 = dt * f(sf + 0.5 * sfRK1)
+            sfRK3 = dt * f(sf + 0.5 * sfRK2)
+            sfRK4 = dt * f(sf + sfRK3)
+  
+            self.Scale_factors[i] = sf + (sfRK1 + 2 * sfRK2 + 2 * sfRK3 + sfRK4)/ 6
+            self.Scale_factor_dots[i] = f(self.Scale_factors[i])     
+                
+            self.Hubbles[i] =   self.Scale_factor_dots[i]/self.Scale_factors[i]       
+                                                
+            print(f"{i} ||| Scale_factor: {self.Scale_factors[i]}------ SF_dot: {self.Scale_factor_dots[i]} ----------- Hubble: {self.Scale_factor_dots[i]/self.Scale_factors[i]}")
+        
+
         
         plt.figure(figsize=(10, 5))
         plt.plot(time.get(), self.Scale_factors.get(), label="Scale Factor (SF)", color='b')
@@ -830,7 +819,7 @@ class N_Bod():
         return accelerations
 
 
-    def runge_kutta_step(self, particles, dt, sf, sf_dot):
+    def runge_kutta_step(self, particles, dt, sf, sf_dot): ### REDO THIS PART
         num_particles = len(particles)
         positions = cp.array([p.position for p in particles])
         velocities = cp.array([p.velocity for p in particles])
@@ -928,17 +917,17 @@ class N_Bod():
                     [positions_tensor_np[frame, i, 2]]
                 )
                 
-            #xs = positions_tensor_np[frame, :, 0]
-            #ys = positions_tensor_np[frame, :, 1]
-            #zs = positions_tensor_np[frame, :, 2]
-            #ax.set_xlim(xs.min() - margin, xs.max() + margin)
-            #ax.set_ylim(ys.min() - margin, ys.max() + margin)
-            #ax.set_zlim(zs.min() - margin, zs.max() + margin)
+            xs = positions_tensor_np[frame, :, 0]
+            ys = positions_tensor_np[frame, :, 1]
+            zs = positions_tensor_np[frame, :, 2]
+            ax.set_xlim(xs.min() - margin, xs.max() + margin)
+            ax.set_ylim(ys.min() - margin, ys.max() + margin)
+            ax.set_zlim(zs.min() - margin, zs.max() + margin)
             
             return scatters
     
         # Create a unique filename for saving the animation.
-        directory = r'C:\Users\Kiran\Desktop\PBh\PBH_sim'
+        directory = r'C:\Users\Kiran\Desktop\PBH project\PBH_sim'
         file_name = 'n_body'
         file_extension = '.gif'
         number = 1
@@ -971,9 +960,9 @@ def time_function(func):
 @time_function
 def main():
     universe = N_Bod(
-        N_particles=10, 
-        Time=50, 
-        dt=  1, 
+        N_particles=100, 
+        Time=2, 
+        dt= 1, 
         Scalar_curvature=0, 
         Initial_SF=1e-12, 
         Masspower=None, 
@@ -981,12 +970,16 @@ def main():
         density_contrast=0.45,
         mass_range=[1e27, 1e30],
         positionxyz_range=[-10000000, 1000000],
-        velocityxyz_range=[0, 0]
+        velocityxyz_range=[-4, 4]
         
     )
     
 if __name__ == "__main__":
+<<<<<<< HEAD
     main()
 
 
 >>>>>>> 44cb7bc (Fixed trhe simulation a bit more)
+=======
+    main()
+>>>>>>> f3910d5 (Fixxed expansion func)
