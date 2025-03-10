@@ -515,10 +515,16 @@ class Particle:
         self.position = self.position *  (scale_factor/SF_Prev)
 
 class N_Bod():
-    def __init__(self, N_particles=10, Time=10.0, dt=0.01, Scalar_curvature=0, 
+    def __init__(self, 
+                 N_particles=10, 
+                 Time=10.0, 
+                 dt=0.01, 
+                 Scalar_curvature=0, 
                  Initial_SF=None,                  
-                 Masspower=None, w=1/3, density_contrast=0.45,
-                 mass_range = [1,1], positionxyz_range = [1,1], velocityxyz_range = [1,1]):
+                 Masspower=None,
+                 mass_range = [1,1],
+                 positionxyz_range = [1,1], 
+                 velocityxyz_range = [1,1]):
         '''
         Simulation parameters:
             - N_particles: Number of particles
@@ -540,9 +546,7 @@ class N_Bod():
         self.dt = dt
         
         self.Scalar_curvature = Scalar_curvature
-        self.Masspower = Masspower
-        self.w = w  # (Not used directly in our expansion equation)
-        
+        self.Masspower = Masspower        
         self.Initial_SF = Initial_SF  # a_i, the initial scale factor
         
         self.Mass_range = mass_range
@@ -563,11 +567,9 @@ class N_Bod():
         ###############################################################
             
         self.lambda_const = 1e-52  # m^-2 (unused in expansion)
-        self.density_contrast = density_contrast  # Temporary placeholder
         
         # Perform the expansion integration.
-        self.Sf_list, self.SF_dot_list = self.Expansion(self.Time, self.dt, self.Scalar_curvature, self.w,
-                                                                  self.Initial_SF)
+        self.Sf_list, self.SF_dot_list = self.Expansion(self.Time, self.dt,self.Initial_SF)
         
         
         
@@ -621,7 +623,7 @@ class N_Bod():
         
         
         
-    def Expansion(self, Time, dt, w, Scalar_curvature,
+    def Expansion(self, Time, dt,
                   Initial_SF):
         
         ####################################################################################################
@@ -668,7 +670,7 @@ class N_Bod():
         self.Scale_factors = cp.zeros(self.data_amt, dtype=cp.float64)
         self.Hubbles = cp.zeros(self.data_amt, dtype=cp.float64)
         
-        Rho_r_a, Rho_m_a, Rho_de_a, self.initial_SF_dot = self.scale_back_initial(2.19e-18, Initial_SF, 1/1101 ,  8.24e-5, 0.27, 0.73)
+        Rho_r_a, Rho_m_a, Rho_de_a, self.initial_SF_dot = self.scale_back_initial(2.19e-18, Initial_SF, 1/1101,  8.24e-5, 0.27, 0.73)
         
         self.Matter_density[0] = Rho_m_a
         self.Rad_density[0] = Rho_r_a
@@ -714,30 +716,29 @@ class N_Bod():
         
 
         
-        plt.figure(figsize=(10, 5))
-        plt.plot(time.get(), self.Scale_factors.get(), label="Scale Factor (SF)", color='b')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Value")
-        plt.title("Evolution of Scale Factor ")
-        plt.legend()
-        plt.grid()
+        fig, axs = plt.subplots(3, 1, figsize=(10, 15), sharex=True)
         
-        plt.figure(figsize=(10, 5))
-        plt.plot(time.get(), self.Scale_factor_dots.get(), label="SF Derivative (SFdot)", color='r')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Value")
-        plt.title("Evolution of Scale Factor Derivative")
-        plt.legend()
-        plt.grid()
-
-
-        plt.figure(figsize=(10, 5))
-        plt.plot(time.get(), self.Hubbles.get(), label="Hubble Parameter", color='r')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Value")
-        plt.title("Evolution of Hubble parameter")
-        plt.legend()
-        plt.grid()
+        axs[0].plot(time.get(), self.Scale_factors.get(), label="Scale Factor (SF)", color='b')
+        axs[0].set_ylabel("Scale Factor")
+        axs[0].set_title("Evolution of Scale Factor")
+        axs[0].legend()
+        axs[0].grid()
+        
+        axs[1].plot(time.get(), self.Scale_factor_dots.get(), label="SF Derivative (SFdot)", color='r')
+        axs[1].set_ylabel("Rate of Change of Scale Factor")
+        axs[1].set_title("Evolution of Scale Factor Derivative")
+        axs[1].legend()
+        axs[1].grid()
+        
+        axs[2].plot(time.get(), self.Hubbles.get(), label="Hubble Parameter over time", color='g')
+        axs[2].set_xlabel("Time (s)")
+        axs[2].set_ylabel("Hubble Parameter")
+        axs[2].set_title("Evolution of Hubble Parameter")
+        axs[2].legend()
+        axs[2].grid()
+        
+        # Adjust layout for better readability
+        plt.tight_layout()
         plt.show()
         
         return self.Scale_factors, self.Scale_factor_dots
@@ -961,13 +962,10 @@ def time_function(func):
 def main():
     universe = N_Bod(
         N_particles=100, 
-        Time=2, 
+        Time=5000, 
         dt= 1, 
         Scalar_curvature=0, 
         Initial_SF=1e-12, 
-        Masspower=None, 
-        w=1/3, 
-        density_contrast=0.45,
         mass_range=[1e27, 1e30],
         positionxyz_range=[-10000000, 1000000],
         velocityxyz_range=[-4, 4]
