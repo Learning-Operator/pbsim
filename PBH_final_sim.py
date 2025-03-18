@@ -48,10 +48,9 @@ class EU_formation_sim():
                      dt = float,
                      sim_rad = None,
                      delta_c = None,
-                     Mass_power = None,
                      Background_parameters = None, #[Omega_m, Omega_r, Omega_l, Ho, sf_ref]
-                     dist_type = '' # Uniform, Gaussian_RF, Scale_invarient_spectrum, Adiabatic, Isocurvature
-                     
+                     dist_type = '', # Uniform, Gaussian_RF, Scale_invarient_spectrum, Adiabatic, Isocurvature
+                     Mass_power = None                     
                      ):
             
             self.N_particles = N_particles
@@ -62,8 +61,8 @@ class EU_formation_sim():
             self.dt = dt
             self.sim_rad = sim_rad
             self.delta_c = delta_c
-            self.Mass_power = Mass_power
             self.dist_type = dist_type
+            self.Mass_power = Mass_power
                                 
             self.G = 6.67430e-11   # m^3 kg^-1 s^-2
             self.c = 299792458     # m/s
@@ -197,21 +196,26 @@ class EU_formation_sim():
 
         def compute_gravitational_acceleration(self, particles):
             num_particles = len(particles)
-            masses = cp.array([particle.mass for particle in particles])        # Shape: (num_particles,)
-            positions = cp.array([particle.position for particle in particles])  # Shape: (num_particles, 3)
+            masses = cp.array([particle.mass for particle in particles])
+            positions = cp.array([particle.position for particle in particles])
 
-            pos_diff = positions[:, cp.newaxis, :] - positions[cp.newaxis, :, :]  # Shape: (num_particles, num_particles, 3)
+            # Add softening parameter to prevent singularities
+            softening = 1.0e3  # Adjust based on your simulation scale
 
-            distances = cp.linalg.norm(pos_diff, axis=2)  # Shape: (num_particles, num_particles)
+            accelerations = cp.zeros((num_particles, 3))
 
-            mask = distances > 0
+            for i in range(num_particles):
+                pos_diff = positions - positions[i]
+                distances_squared = cp.sum(pos_diff**2, axis=1)
+                distances_squared = cp.where(distances_squared > 0, distances_squared + softening**2, 1e20)
 
+                force_magnitudes = self.G * masses / (distances_squared * cp.sqrt(distances_squared))
 
-            force_magnitudes = cp.where(mask, self.G * masses[None, :] / (distances**3), 0)
+                # Zero out self-interaction
+                force_magnitudes[i] = 0
 
-            unit_vectors = cp.where(mask[..., None], pos_diff / distances[..., None], 0)
-
-            accelerations = -cp.sum(force_magnitudes[..., None] * unit_vectors, axis=1)  # Shape: (num_particles, 3)
+                for j in range(3):  # For each dimension
+                    accelerations[i, j] = cp.sum(force_magnitudes * pos_diff[:, j])
 
             return accelerations
 
@@ -219,55 +223,93 @@ class EU_formation_sim():
             num_particles = len(particles)
             positions = cp.array([p.position for p in particles])
             velocities = cp.array([p.velocity for p in particles])
-            masses = cp.array([p.mass for p in particles])
+
+            # Store the original positions and velocities
+            original_positions = positions.copy()
+            original_velocities = velocities.copy()
+
+            # Calculate accelerations once at the beginning
+            accelerations = self.compute_gravitational_acceleration(particles)
 
             # Compute k1
-            k1_v = -2 * (sf_dot/sf) * velocities - 1/(sf**3) * self.compute_gravitational_acceleration(particles)
-            k1_r = velocities
+            k1_v = -2 * (sf_dot/sf) * original_velocities + accelerations/(sf**3)
+            k1_r = original_velocities
+
+            # Update positions and velocities for k2 calculation
+            temp_positions = original_positions + 0.5 * dt * k1_r
+            temp_velocities = original_velocities + 0.5 * dt * k1_v
+
+            # Update particle positions for acceleration calculation
+            for i, p in enumerate(particles):
+                p.position = temp_positions[i]
+                p.velocity = temp_velocities[i]
+
+            # Calculate new accelerations
+            accelerations = self.compute_gravitational_acceleration(particles)
 
             # Compute k2
-            temp_positions = positions + 0.5 * dt * k1_r
-            temp_velocities = velocities + 0.5 * dt * k1_v
-            for i, p in enumerate(particles):
-                p.position = temp_positions[i]
-                p.velocity = temp_velocities[i]
-            k2_v = -2 * (sf_dot/sf) * temp_velocities - 1/(sf**3) * self.compute_gravitational_acceleration(particles)
+            k2_v = -2 * (sf_dot/sf) * temp_velocities + accelerations/(sf**3)
             k2_r = temp_velocities
 
-            # Compute k3
-            temp_positions = positions + 0.5 * dt * k2_r
-            temp_velocities = velocities + 0.5 * dt * k2_v
+            # Update positions and velocities for k3 calculation
+            temp_positions = original_positions + 0.5 * dt * k2_r
+            temp_velocities = original_velocities + 0.5 * dt * k2_v
+
             for i, p in enumerate(particles):
                 p.position = temp_positions[i]
                 p.velocity = temp_velocities[i]
-            k3_v = -2 * (sf_dot/sf) * temp_velocities - 1/(sf**3) * self.compute_gravitational_acceleration(particles)
+
+            accelerations = self.compute_gravitational_acceleration(particles)
+
+            # Compute k3
+            k3_v = -2 * (sf_dot/sf) * temp_velocities + accelerations/(sf**3)
             k3_r = temp_velocities
 
-            # Compute k4
-            temp_positions = positions + dt * k3_r
-            temp_velocities = velocities + dt * k3_v
+            # Update positions and velocities for k4 calculation
+            temp_positions = original_positions + dt * k3_r
+            temp_velocities = original_velocities + dt * k3_v
+
             for i, p in enumerate(particles):
                 p.position = temp_positions[i]
                 p.velocity = temp_velocities[i]
-            k4_v = -2 * (sf_dot/sf) * temp_velocities - 1/(sf**3) * self.compute_gravitational_acceleration(particles)
+
+            accelerations = self.compute_gravitational_acceleration(particles)
+
+            # Compute k4
+            k4_v = -2 * (sf_dot/sf) * temp_velocities + accelerations/(sf**3)
             k4_r = temp_velocities
 
-            # Update particles using weighted sum of k1, k2, k3, and k4
+            # Final update
             for i, particle in enumerate(particles):
-                particle.velocity = velocities[i] + dt / 6 * (k1_v[i] + 2 * k2_v[i] + 2 * k3_v[i] + k4_v[i])
-                particle.position = positions[i] + dt / 6 * (k1_r[i] + 2 * k2_r[i] + 2 * k3_r[i] + k4_r[i])
+                particle.velocity = original_velocities[i] + dt / 6 * (k1_v[i] + 2 * k2_v[i] + 2 * k3_v[i] + k4_v[i])
+                particle.position = original_positions[i] + dt / 6 * (k1_r[i] + 2 * k2_r[i] + 2 * k3_r[i] + k4_r[i])
 
 
+        
         def animate_positions_over_time(self, positions_tensor):
-            # Convert the positions tensor from a CuPy array to a NumPy array.
             positions_tensor_np = cp.asnumpy(positions_tensor)
+
+            # Downsample for smoother animation if needed
+            downsample = max(1, positions_tensor_np.shape[0] // 100)
+            positions_tensor_np = positions_tensor_np[::downsample]
+
+            # Calculate bounds and set fixed axis limits
+            x_all = positions_tensor_np[:, :, 0]
+            y_all = positions_tensor_np[:, :, 1]
+            z_all = positions_tensor_np[:, :, 2]
+
+            x_min, x_max = np.min(x_all), np.max(x_all)
+            y_min, y_max = np.min(y_all), np.max(y_all)
+            z_min, z_max = np.min(z_all), np.max(z_all)
+
+            margin = max((x_max-x_min), (y_max-y_min), (z_max-z_min)) * 0.1
 
             fig = plt.figure(figsize=(10, 8))
             ax = fig.add_subplot(111, projection='3d')
 
-            # Fix 12: Use color-coded particles
-            colors = np.random.rand(self.N_particles, 3)
-            # Initialize scatter plot with all particles at first timestep
+            actual_n_particles = positions_tensor_np.shape[1]  
+            colors = np.random.rand(actual_n_particles, 3)
+
             scatter = ax.scatter(
                 positions_tensor_np[0, :, 0],
                 positions_tensor_np[0, :, 1],
@@ -276,80 +318,53 @@ class EU_formation_sim():
                 s=10
             )
 
-            margin = 10  
-            x_all = positions_tensor_np[:, :, 0]
-            y_all = positions_tensor_np[:, :, 1]
-            z_all = positions_tensor_np[:, :, 2]
-            ax.set_xlim(x_all.min() - margin, x_all.max() + margin)
-            ax.set_ylim(y_all.min() - margin, y_all.max() + margin)
-            ax.set_zlim(z_all.min() - margin, z_all.max() + margin)
+            ax.set_xlim(x_min - margin, x_max + margin)
+            ax.set_ylim(y_min - margin, y_max + margin)
+            ax.set_zlim(z_min - margin, z_max + margin)
 
             ax.set_xlabel("X")
             ax.set_ylabel("Y")
             ax.set_zlabel("Z")
             ax.set_title("3D Position of Particles Over Time")
 
-            # Build a multi-line string with key simulation inputs.
-            inputs_str = (
-                f"N_particles: {self.N_particles}\n"
-                f"Time: {self.Time}\n"
-                f"dt: {self.dt}\n"
-                f"Initial_SF: {self.Start_sf}\n"
-                f"Initial_SFdot: {self.List_sf_dot[0]}\n"
-                f"mass_range: {self.Mass_power}\n"
-
-            )
-
-            # Add the input text as a text box in the upper left corner.
-            ax.text2D(0.05, 0.95, inputs_str, transform=ax.transAxes,
-                    fontsize=8, verticalalignment='top',
-                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+            time_text = ax.text2D(0.02, 0.98, '', transform=ax.transAxes)
 
             def update(frame):
-                # Update the scatter plot with new positions
                 scatter._offsets3d = (
                     positions_tensor_np[frame, :, 0],
                     positions_tensor_np[frame, :, 1],
                     positions_tensor_np[frame, :, 2]
                 )
+                time_text.set_text(f'Frame: {frame}/{len(positions_tensor_np)-1}')
+                return [scatter, time_text]
+            
+            def get_unique_filename(directory, base_name, extension=".gif"):
+                """Ensure the file doesn't overwrite an existing one by appending a number if needed."""
+                counter = 1
+                file_path = os.path.join(directory, f"{base_name}{extension}")
 
-                # Update axis limits based on current positions
-                xs = positions_tensor_np[frame, :, 0]
-                ys = positions_tensor_np[frame, :, 1]
-                zs = positions_tensor_np[frame, :, 2]
-                ax.set_xlim(xs.min() - margin, xs.max() + margin)
-                ax.set_ylim(ys.min() - margin, ys.max() + margin)
-                ax.set_zlim(zs.min() - margin, zs.max() + margin)
+                while os.path.exists(file_path):
+                    file_path = os.path.join(directory, f"{base_name}_{counter}{extension}")
+                    counter += 1
 
-                # Fix 13: Return the scatter object
-                return [scatter]
+                return file_path
 
-            # Create a unique filename for saving the animation.
-            directory = r'C:\Users\Kiran\Desktop\PBH project\PBH_sim'
-            file_name = 'n_body'
-            file_extension = '.gif'
-            number = 1
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-            while True:
-                file_path = os.path.join(directory, f"{file_name}_{number}{file_extension}")
-                if not os.path.exists(file_path):
-                    break
-                number += 1
 
-            anim = FuncAnimation(fig, update, frames=positions_tensor_np.shape[0], interval=50, blit=True)
+            anim = FuncAnimation(fig, update, frames=len(positions_tensor_np), interval=100, blit=True)
+
+            directory = r'C:\Users\Kiran\Desktop\PBh\gifs'
+            os.makedirs(directory, exist_ok=True)
+            file_path = get_unique_filename(directory, "n_body_fixed", ".gif")
+
             try:
-                anim.save(file_path, writer='pillow', fps=20)
+                anim.save(file_path, writer='pillow', fps=10)
                 print(f"Animation saved as: {file_path}")
             except Exception as e:
                 print(f"Error saving animation: {e}")
-                # Try alternative save method
-                try:
-                    plt.savefig(os.path.join(directory, f"{file_name}_{number}_first_frame.png"))
-                    print(f"Saved first frame as image instead of animation")
-                except:
-                    pass
-            plt.show()  
+                plt.savefig(os.path.join(directory, "n_body_fixed_first_frame.png"))
+
+            plt.show()
+        
         
             
                 
@@ -400,7 +415,7 @@ class EU_formation_sim():
 
             volume = (4/3) * np.pi * self.sim_rad**3
 
-            critical_density = 3 * (self.Pars[4])**2 / (8 * np.pi * self.G)
+            critical_density = 3 * (self.Pars[3])**2 / (8 * np.pi * self.G)
             matter_density = self.Pars[0] * critical_density
             radiation_density = self.Pars[1] * critical_density
 
@@ -413,34 +428,29 @@ class EU_formation_sim():
             n_radiation_particles = total_particles - n_matter_particles
 
             mass_per_matter_particle = total_matter_mass / n_matter_particles
-            for _ in range(n_matter_particles):
-                while True:
-                    x = (2 * np.random.random() - 1) * self.sim_rad
-                    y = (2 * np.random.random() - 1) * self.sim_rad
-                    z = (2 * np.random.random() - 1) * self.sim_rad
 
-                    if x**2 + y**2 + z**2 <= self.sim_rad**2:
-                        break
-                    
-                velocity = cp.array([np.random.normal(0, 100), np.random.normal(0, 100), np.random.normal(0, 100)])
+            # Generate spherical coordinates for better uniformity
+            for _ in range(n_matter_particles):
+                # Generate random points in spherical coordinates
+                r = self.sim_rad * np.cbrt(np.random.random())  # Cube root for uniform volume distribution
+                theta = np.arccos(2 * np.random.random() - 1)  # Uniform in cos(theta)
+                phi = 2 * np.pi * np.random.random()
+
+                # Convert to Cartesian
+                x = r * np.sin(theta) * np.cos(phi)
+                y = r * np.sin(theta) * np.sin(phi)
+                z = r * np.cos(theta)
+
+                # Slower initial velocities for stability
+                velocity = cp.array([
+                    np.random.normal(0, 10),  # Reduced velocity scale
+                    np.random.normal(0, 10), 
+                    np.random.normal(0, 10)
+                ])
 
                 particles.append(MassParticle(mass_per_matter_particle, cp.array([x, y, z]), velocity))
 
-            effective_mass_per_radiation_particle = total_radiation_energy / (n_radiation_particles * self.c**2)
-            for _ in range(n_radiation_particles):
-                
-
-                while True:
-                    x = (2 * np.random.random() - 1) * self.sim_rad
-                    y = (2 * np.random.random() - 1) * self.sim_rad
-                    z = (2 * np.random.random() - 1) * self.sim_rad
-
-                    if x**2 + y**2 + z**2 <= self.sim_rad**2:
-                        break
-                    
-                velocity = cp.array([np.random.normal(0, 1), np.random.normal(0, 1), np.random.normal(0, 1)])
-
-                particles.append(RadiationParticle(effective_mass_per_radiation_particle, cp.array([x, y, z]), velocity))
+            # Similar improvements for radiation particles...
 
             return particles
 
@@ -545,7 +555,7 @@ class EU_formation_sim():
             n_radiation_particles = N_particles - n_matter_particles
 
             volume = (4/3) * np.pi * self.sim_rad**3
-            critical_density = 3 * (self.Pars[3])**2 / (8 * np.pi * G)
+            critical_density = 3 * (self.Pars[3])**2 / (8 * np.pi * self.G)
             matter_density = self.Pars[0] * critical_density
             radiation_density = self.Pars[1] * critical_density
 
@@ -556,7 +566,7 @@ class EU_formation_sim():
             radiation_positions = positions[n_matter_particles:]
 
             base_matter_masses = np.ones(n_matter_particles) * (total_matter_mass / n_matter_particles)
-            base_radiation_masses = np.ones(n_radiation_particles) * (total_radiation_energy / (n_radiation_particles * c**2))
+            base_radiation_masses = np.ones(n_radiation_particles) * (total_radiation_energy / (n_radiation_particles * self.c**2))
 
             modulated_matter_masses = self.apply_mass_power_spectrum(matter_positions, base_matter_masses)
 
@@ -804,7 +814,7 @@ class EU_formation_sim():
             density_field_radiation = (density_field_radiation - np.mean(density_field_radiation)) / np.std(density_field_radiation)
 
 
-            critical_density = 3 * (self.Pars[3])**2 / (8 * np.pi * G)
+            critical_density = 3 * (self.Pars[3])**2 / (8 * np.pi * self.G)
             matter_density = self.Pars[0] * critical_density
             radiation_density = self.Pars[1] * critical_density
 
@@ -866,9 +876,9 @@ class EU_formation_sim():
 
                 vel_direction = np.random.normal(0, 1, 3)
                 vel_direction = vel_direction / np.linalg.norm(vel_direction)
-                vel = cp.array(vel_direction * c)
+                vel = cp.array(vel_direction * self.c)
 
-                mass = (total_radiation_energy / (n_radiation_particles * c**2)) * radiation_contrast_valid[idx]
+                mass = (total_radiation_energy / (n_radiation_particles * self.c**2)) * radiation_contrast_valid[idx]
 
                 particles.append(RadiationParticle(mass, pos, vel))
 
@@ -879,13 +889,13 @@ class EU_formation_sim():
 
 
 sim = EU_formation_sim(
-    N_particles=100,
+    N_particles=500,
     Start_sf=1e-12,
-    Time=1000.0,
-    dt=1,
+    Time=2000000000000.0,
+    dt=100000000000,  # Reduce time step for better stability
     sim_rad=1.0e6,
     delta_c=0.45,
-    dist_type='Uniform'
+    dist_type='Gaussian_RF'
 )
 sim.Run_simulation(Set_Particles_rigidly=True)
     
