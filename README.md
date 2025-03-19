@@ -77,10 +77,10 @@ Generated and validated three key relationships:
 
 | Distribution | Description | Status |
 |------------|-------------|--------|
-| **Uniform Distribution** | Fixed particle count with uniform spatial distribution | Implemented |
+| **Uniform Distribution** | Fixed particle count with uniform spatial distribution | Refining |
 | **Random Gaussian Field** | Models early universe fluctuations with Gaussian probability density functions | Refining |
-| **Power Spectrum Distribution** | Fluctuation amplitude varies with wave number (k) | Implemented |
-| **Scale-Invariant Spectrum** | Constant fluctuation amplitude as function of k | Implemented |
+| **Power Spectrum Distribution** | Fluctuation amplitude varies with wave number (k) | Refining |
+| **Scale-Invariant Spectrum** | Constant fluctuation amplitude as function of k | Refining |
 
 ### Particle Classification
 
