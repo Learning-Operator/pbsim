@@ -16,7 +16,6 @@
 - [Usage Instructions](#usage-instructions)
 - [Results and Analysis](#results-and-analysis)
 - [References](#references)
-- [License](#license)
 - [Contact](#contact)
 
 ## 🔭 Project Overview
