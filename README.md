@@ -1,22 +1,18 @@
 # 🌌 Primordial Black Hole Simulation
 
-![GitHub stars](https://img.shields.io/github/stars/yourusername/primordial-black-hole-simulation?style=social)
-![GitHub forks](https://img.shields.io/github/forks/yourusername/primordial-black-hole-simulation?style=social)
-![GitHub issues](https://img.shields.io/github/issues/yourusername/primordial-black-hole-simulation?style=social)
-
 > A computational framework for investigating the formation and survival probability of primordial black holes in the early universe.
 
 ## 📋 Table of Contents
-- [Project Overview](#project-overview)
-- [Theoretical Framework](#theoretical-framework)
-- [Numerical Methods](#numerical-methods)
-- [N-body Simulation Architecture](#n-body-simulation-architecture)
-- [Current Development Status](#current-development-status)
-- [Technical Implementation](#technical-implementation)
-- [Usage Instructions](#usage-instructions)
-- [Results and Analysis](#results-and-analysis)
-- [References](#references)
-- [Contact](#contact)
+- Project Overview
+- Theoretical Framework
+- Numerical Methods
+- N-body Simulation Architecture
+- Current Development Status
+- Technical Implementation
+- Usage Instructions
+- Results and Analysis
+- References
+- Contact
 
 ## 🔭 Project Overview
 
