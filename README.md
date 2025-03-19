@@ -24,7 +24,7 @@
 This repository contains computational simulations investigating the existence probability of primordial black holes (PBHs) in our universe. Originally presented at the Rorke Adams Science Fair, this project explores the formation conditions and survival probability of PBHs from the early universe to present day through detailed cosmological modeling and N-body simulations.
 
 <p align="center">
-  <img src="https://via.placeholder.com/800x400?text=Simulation+Visualization" alt="Simulation Visualization" width="80%">
+  <img src="[https://via.placeholder.com/800x400?text=Simulation+Visualization" alt="Simulation Visualization](https://github.com/Learning-Operator/PBH_PROJ/blob/main/gifs/n_body_fixed_5.gif)" width="80%">
 </p>
 
 ## 🌠 Theoretical Framework
