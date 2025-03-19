@@ -132,8 +132,7 @@ def rk4_step(y, t, dt, derivatives):
 ### Installation
 
 ```bash
-git clone **https://github.com/yourusername/primordial-black-hole-simulation.git******
-cd primordial-black-hole-simulation
+git clone https://github.com/Learning-Operator/PBH_PROJ.git
 ```
 
 
