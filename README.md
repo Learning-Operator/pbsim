@@ -21,11 +21,12 @@
 
 ## 🔭 Project Overview
 
-This repository contains computational simulations investigating the existence probability of primordial black holes (PBHs) in our universe. Originally presented at the Rorke Adams Science Fair, this project explores the formation conditions and survival probability of PBHs from the early universe to present day through detailed cosmological modeling and N-body simulations.
+This repository contains computational simulations investigating the existence probability of primordial black holes (PBHs) in our universe. This project explores the formation conditions and survival probability of PBHs from the early universe to present day through a cosmological modeling and N-body simulations.
 
 <p align="center">
-  <img src="[https://via.placeholder.com/800x400?text=Simulation+Visualization" alt="Simulation Visualization](https://github.com/Learning-Operator/PBH_PROJ/blob/main/gifs/n_body_fixed_5.gif)" width="80%">
-</p>
+
+  ![n_body_fixed_5](https://github.com/user-attachments/assets/98e1f186-3c22-456f-8c7a-26920ba469af)
+
 
 ## 🌠 Theoretical Framework
 
@@ -35,7 +36,7 @@ This repository contains computational simulations investigating the existence p
   - Least constrained parameter: -0.058 +0.046/-0.051
   - Most constrained parameter: 0.0005 +/-0.0038/-0.0040
 
-- **Parameter Sources**: TT, TE, EE+lowE+lensing+BAO constrained parameters from Planck 281 Collaboration
+- **Parameter Sources**: TT, TE, EE+lowE+lensing+BAO constrained parameters from Planck 2018 Collaboration
 
 - **Cosmological Constant**: Omitted from Friedmann equations due to negligible contribution at early universe scales
 
@@ -43,15 +44,14 @@ This repository contains computational simulations investigating the existence p
 
 - First Friedmann equation modified to accommodate flat universe assumption
 - Density parameters rescaled appropriately through simulation timeframe
-- Initial approach used constant critical density (resulted in errors)
-- Corrected approach scales density directly and recalculates parameters afterward
+- Initial approach used constant critical density (resulted in errors), however, modified approach to scale density, and then recalculate density parameter.
 
 ## 🧮 Numerical Methods
 
 ### Integration Technique
 
 - **Runge-Kutta 4th Order Integration**: Implemented without adaptive timestep
-- Future improvement: Implement adaptive timestep to improve accuracy and reduce computational artifacts
+- **Future improvement**: Implement adaptive timestep to improve accuracy and reduce computational artifacts
 
 ### Simulation Validation
 
@@ -74,9 +74,9 @@ Generated and validated three key relationships:
 - Equations of motion rewritten to accommodate co-moving framework
 - Currently in testing/validation phase
 
-### Distribution Models
+### Distributions Modeled
 
-| Model Type | Description | Status |
+| Distribution | Description | Status |
 |------------|-------------|--------|
 | **Uniform Distribution** | Fixed particle count with uniform spatial distribution | Implemented |
 | **Random Gaussian Field** | Models early universe fluctuations with Gaussian probability density functions | Refining |
@@ -100,9 +100,9 @@ Generated and validated three key relationships:
 
 ### In Progress 🔄
 
-- Refining random Gaussian field implementation
+- Refining random Gaussian field implementation and other distribution
 - Testing co-moving coordinate system accuracy
-- Optimizing integration performance
+- Optimizing integration performance through adaptive timesteps
 
 ### Planned Features 📝
 
@@ -133,32 +133,13 @@ def rk4_step(y, t, dt, derivatives):
 ### Installation
 
 ```bash
-git clone https://github.com/yourusername/primordial-black-hole-simulation.git
+git clone **https://github.com/yourusername/primordial-black-hole-simulation.git******
 cd primordial-black-hole-simulation
-pip install -r requirements.txt
 ```
 
-### Running the Simulation
-
-```bash
-python simulate.py --particles 1000 --distribution gaussian --timespan 10e9 --timestep 1e5
-```
-
-### Output Analysis
-
-```bash
-python analyze_results.py --input simulation_output.dat --plot-scale-factor --plot-hubble
-```
 
 ## 📈 Results and Analysis
 
-The simulation outputs currently include:
-
-<p align="center">
-  <img src="https://via.placeholder.com/400x300?text=Scale+Factor+Evolution" alt="Scale Factor Evolution" width="45%">
-  &nbsp;&nbsp;
-  <img src="https://via.placeholder.com/400x300?text=Hubble+Parameter" alt="Hubble Parameter" width="45%">
-</p>
 
 1. Scale factor evolution visualizations
 2. Rate of change of scale factor over time
@@ -173,20 +154,35 @@ Future analysis will include:
 
 ## 📚 References
 
-- Planck Collaboration. (Year). Planck 281: Cosmological Parameters.
-- [Additional references for cosmological models]
-- [References for numerical methods]
-- [References for PBH formation theory]
+Escrivà, A., & Romano, A. E. (2021). Effects of the shape of curvature peaks on the size of primordial black holes. 
+Journal of Cosmology and Astroparticle Physics, 2021(05), 066. https://doi.org/10.1088/1475-7516/2021/05/066
+Musco, I., De Luca, V., Franciolini, G., & Riotto, A. (2021). Threshold for primordial black holes. II. A simple 
+analytic prescription. Physical Review D, 103(6), 063538. https://doi.org/10.1103/PhysRevD.103.063538
+Carr, B., & Kuhnel, F. (2021). Primordial black holes as dark matter candidates. SciPost Physics Lecture Notes,
+48. https://doi.org/10.48550/arXiv.2110.02821
 
-## 📜 License
+Musco, I., Miller, J. C., & Rezzolla, L. (2005). Computations of primordial black-hole formation. Classical and 
+Quantum Gravity, 22(7), 14051424. https://doi.org/10.1088/0264-9381/22/7/013
+The picture of our universe: A view from modern cosmology - D. Reid et al. (n.d.). Ned.ipac.caltech.edu. 
+https://ned.ipac.caltech.edu/level5/Sept02/Reid/Reid5_2.html
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Escrivà, A. (2022, January 21). PBH formation from spherically symmetric hydrodynamical perturbations: A 
+Review. MDPI. https://www.mdpi.com/2218-1997/8/2/66
+
+Planck Collaboration, Aghanim, N., Akrami, Y., Ashdown, M., Aumont, J., Baccigalupi, C., Ballardini, M., 
+Banday, A. J., Barreiro, R. B., Bartolo, N., Basak, S., Battye, R., Benabed, K., Bernard, J.-P. ., Bersanelli, M., 
+Bielewicz, P., Bock, J. J., Bond, J. R., Borrill, J., & Bouchet, F. R. (2019). Planck 2018 results. VI. Cosmological 
+parameters. ArXiv:1807.06209 [Astro-Ph]. https://arxiv.org/abs/1807.06209
+
+International Centre for Theoretical Sciences. (2020, September 21). Essential Cosmological Perturbation Theory 
+by David Wands. YouTube. https://www.youtube.com/watch?v=WrGv9nkTaRQ
+
+Musco, I., De Luca, V., Franciolini, G., & Riotto, A. (2021). Threshold for primordial black holes. II. A simple analytic 
+prescription. Physical Review D, 103(6), 063538. https://doi.org/10.1103/PhysRevD.103.063538
 
 ## 📬 Contact
 
-Your Name - [your.email@example.com](mailto:your.email@example.com)
-
-Project Link: [https://github.com/yourusername/primordial-black-hole-simulation](https://github.com/yourusername/primordial-black-hole-simulation)
+Tanay Vajhala - [Tanayvajhala@gmail.com](mailto:Tanayvajhala@gmail.com)
 
 ---
 
