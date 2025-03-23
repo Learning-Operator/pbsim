@@ -9,6 +9,83 @@ h_bar = 1.054571917e-34  # Joule*s
 
 
 
+def plot_heat_map(field, sim_rad, n):
+    # Project the 3D field onto the 2D planes
+    x = np.linspace(-sim_rad, sim_rad, n)
+    y = np.linspace(-sim_rad, sim_rad, n)
+    z = np.linspace(-sim_rad, sim_rad, n)
+
+    X, Y = np.meshgrid(x, y)
+
+    # Projection on XY plane (Z = 0)
+    field_xy = field[n // 2, :, :]  # Taking the central slice in the z-direction
+    field_xy = field_xy.get()  # Ensure it's a NumPy array
+
+    # Projection on XZ plane (Y = 0)
+    field_xz = field[:, n // 2, :]
+    field_xz = field_xz.get()
+
+    # Projection on YZ plane (X = 0)
+    field_yz = field[:, :, n // 2]
+    field_yz = field_yz.get()
+
+    # Plot the heatmaps for each projection
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    # XY Plane projection
+    im0 = axes[0].imshow(field_xy, extent=[-sim_rad, sim_rad, -sim_rad, sim_rad], origin='lower', cmap='viridis')
+    axes[0].set_title('XY Projection')
+    axes[0].set_xlabel('X')
+    axes[0].set_ylabel('Y')
+    fig.colorbar(im0, ax=axes[0])
+
+    # XZ Plane projection
+    im1 = axes[1].imshow(field_xz, extent=[-sim_rad, sim_rad, -sim_rad, sim_rad], origin='lower', cmap='viridis')
+    axes[1].set_title('XZ Projection')
+    axes[1].set_xlabel('X')
+    axes[1].set_ylabel('Z')
+    fig.colorbar(im1, ax=axes[1])
+
+    # YZ Plane projection
+    im2 = axes[2].imshow(field_yz, extent=[-sim_rad, sim_rad, -sim_rad, sim_rad], origin='lower', cmap='viridis')
+    axes[2].set_title('YZ Projection')
+    axes[2].set_xlabel('Y')
+    axes[2].set_ylabel('Z')
+    fig.colorbar(im2, ax=axes[2])
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_3d_distribution(particles):
+    projections = ['XY', 'XZ', 'YZ']
+    axes_labels = [('X', 'Y'), ('X', 'Z'), ('Y', 'Z')]
+
+    matter_positions = cp.array([p.position for p in particles if isinstance(p, MassParticle)])
+    radiation_positions = cp.array([p.position for p in particles if isinstance(p, RadiationParticle)])
+
+    if len(matter_positions) > 0:
+        matter_positions = matter_positions.get()
+    if len(radiation_positions) > 0:
+        radiation_positions = radiation_positions.get()
+
+    for i, (proj, labels) in enumerate(zip(projections, axes_labels)):
+        plt.figure(figsize=(6, 6))
+
+        if len(matter_positions) > 0:
+            plt.scatter(matter_positions[:, i % 3], matter_positions[:, (i + 1) % 3], 
+                        s=2, color='blue', alpha=0.5, label="Mass Particles")
+
+        if len(radiation_positions) > 0:
+            plt.scatter(radiation_positions[:, i % 3], radiation_positions[:, (i + 1) % 3], 
+                        s=2, color='red', alpha=0.5, label="Radiation Particles")
+
+        plt.xlabel(labels[0])
+        plt.ylabel(labels[1])
+        plt.title(f'{proj} Projection')
+        plt.legend()
+        plt.show()
+
 def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_range):
     """Generate particles with uniform distribution within a sphere"""
     particles = []
@@ -76,9 +153,10 @@ def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_ran
             
             velocity_Rad = c * velocity_Rad
 
-            particles.append(RadiationParticle(energy= Energy_per_Radiation_particle, position= cp.array([x_Rad , y_Rad , z_Rad ], velocity = velocity_Rad)))
+            particles.append(RadiationParticle(energy= Energy_per_Radiation_particle, position = (cp.array([x_Rad , y_Rad , z_Rad ])), velocity = velocity_Rad))
 
-
+    plot_3d_distribution(particles)
+    
     return particles
 
 def apply_mass_power_spectrum( positions, base_masses, Pars, sim_rad, n_s, n):
@@ -232,52 +310,6 @@ def generate_gaussian_RF(N_particles, Pars, sim_rad):
         vel = cp.array([cp.random.normal(0, 1), cp.random.normal(0, 1), cp.random.normal(0, 1)])
         particles.append(RadiationParticle(energy=base_radiation_energies[i], position=pos, velocity=vel))
 
-    def plot_heat_map(field, sim_rad, n):
-        # Project the 3D field onto the 2D planes
-        x = np.linspace(-sim_rad, sim_rad, n)
-        y = np.linspace(-sim_rad, sim_rad, n)
-        z = np.linspace(-sim_rad, sim_rad, n)
-
-        X, Y = np.meshgrid(x, y)
-
-        # Projection on XY plane (Z = 0)
-        field_xy = field[n // 2, :, :]  # Taking the central slice in the z-direction
-        field_xy = field_xy.get()  # Ensure it's a NumPy array
-
-        # Projection on XZ plane (Y = 0)
-        field_xz = field[:, n // 2, :]
-        field_xz = field_xz.get()
-
-        # Projection on YZ plane (X = 0)
-        field_yz = field[:, :, n // 2]
-        field_yz = field_yz.get()
-
-        # Plot the heatmaps for each projection
-        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-
-        # XY Plane projection
-        im0 = axes[0].imshow(field_xy, extent=[-sim_rad, sim_rad, -sim_rad, sim_rad], origin='lower', cmap='viridis')
-        axes[0].set_title('XY Projection')
-        axes[0].set_xlabel('X')
-        axes[0].set_ylabel('Y')
-        fig.colorbar(im0, ax=axes[0])
-
-        # XZ Plane projection
-        im1 = axes[1].imshow(field_xz, extent=[-sim_rad, sim_rad, -sim_rad, sim_rad], origin='lower', cmap='viridis')
-        axes[1].set_title('XZ Projection')
-        axes[1].set_xlabel('X')
-        axes[1].set_ylabel('Z')
-        fig.colorbar(im1, ax=axes[1])
-
-        # YZ Plane projection
-        im2 = axes[2].imshow(field_yz, extent=[-sim_rad, sim_rad, -sim_rad, sim_rad], origin='lower', cmap='viridis')
-        axes[2].set_title('YZ Projection')
-        axes[2].set_xlabel('Y')
-        axes[2].set_ylabel('Z')
-        fig.colorbar(im2, ax=axes[2])
-
-        plt.tight_layout()
-        plt.show()
 
     plot_heat_map(field, sim_rad, n)
 
@@ -383,12 +415,15 @@ def generate_adiabatic_perturbations( N_particles, Pars, sim_rad, Sf_start):
 
         particles.append(RadiationParticle(energy, pos, vel))
 
+    
+    plot_heat_map(density_field, sim_rad, n)
+    
     return particles
 
 
 def generate_scale_invariant_spectrum( Pars, sim_rad, N_particles):
     """Generate particles with positions following a scale-invariant power spectrum P(k) ∝ k^1"""
-    n = int(cp.cbrt(N_particles))  # Cubic root to get grid size
+    n = 100  # Cubic root to get grid size
     x = cp.linspace(-sim_rad, sim_rad, n)
     y = cp.linspace(-sim_rad, sim_rad, n)
     z = cp.linspace(-sim_rad, sim_rad, n)
@@ -474,6 +509,8 @@ def generate_scale_invariant_spectrum( Pars, sim_rad, N_particles):
 
         particles.append(RadiationParticle(mass, pos, vel))
 
+    plot_heat_map(density_field, sim_rad, n)
+    
     return particles
 
 def generate_isocurvature_perturbations( Pars, sim_rad, N_particles):

@@ -199,8 +199,8 @@ class EU_formation_sim():
         def Create_particles(self):
             """Creates particles based on the specified distribution type"""
     
-            if self.dist_type == 'Uniform':
-                return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad)
+            if self.dist_type == 'Uniform' or self.dist_type == "uniform":
+                return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100]) # This needs to be user set!!!!
             elif self.dist_type == 'Gaussian_RF':
                 return generate_gaussian_RF(N_particles=self.N_particles, Pars=self.Pars, sim_rad= self.sim_rad)
             elif self.dist_type == 'Scale_invarient_spectrum':
@@ -216,7 +216,7 @@ class EU_formation_sim():
             
             else:
                 print(f"Warning: Distribution type '{self.dist_type}' not recognized. Using Uniform distribution.")
-                return generate_uniform_distribution(self.N_particles)
+                return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100]) # This needs to be user set!!!!
 
 
 
@@ -406,7 +406,7 @@ sim = EU_formation_sim(
     dt=10000000,  # Reduce time step for better stability
     sim_rad=1.0e6,
     delta_c=0.45,
-    dist_type='Gaussian_RF',
+    dist_type='Scale_invarient_spectrum',
     dir_plot = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\Plots',
     dir_gif = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\N_body_gifs'
 )
@@ -415,11 +415,9 @@ sim.Run_simulation(Set_Particles_rigidly=True)
  
  
  #Todo:
-    #- Finish up tweaking the distributions
-    #- add in visualizations for each dsitributions and a directory for them
+    #- Fully test wether the gravity works(probably does work, just need enough partricles)
     #- incorporate CMBagent or some sort of agent code to create a RAG agent 
         #(This is to source parameters, so i can simply prompt it to get the appropriate parameter values)
-    # Fully test wether the gravity works(probably does work, just need enough partricles)
     # Find a way to tweak softening param in compute grav
     # Create a PBH formation check
     # Develop agents for resutls analysis
