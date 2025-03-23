@@ -30,7 +30,6 @@ class MassParticle(Particle):
 
 class RadiationParticle(Particle):
     def __init__(self, energy, position, velocity):
-        super().__init__(position, velocity)
         
         # E = hf
         # c = λf

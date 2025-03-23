@@ -11,9 +11,9 @@ from Functions.Distributions import generate_uniform_distribution, \
                                     generate_gaussian_RF, \
                                     generate_scale_invariant_spectrum, \
                                     generate_adiabatic_perturbations, \
-                                    particles_from_arrays, \
-                                    generate_isocurvature_perturbations, \
-                                    particles_from_isocurvature
+                                    generate_isocurvature_perturbations #, \
+                                    #particles_from_arrays, \
+                                    #particles_from_isocurvature
 
 
 
@@ -59,7 +59,9 @@ class EU_formation_sim():
                      delta_c = None,
                      Background_parameters = None, #[Omega_m, Omega_r, Omega_l, Ho, sf_ref]
                      dist_type = '', # Uniform, Gaussian_RF, Scale_invarient_spectrum, Adiabatic, Isocurvature
-                     Mass_power = None                     
+                     Mass_power = None,
+                     dir_plot = None,      
+                     dir_gif = None               
                      ):
             
             self.N_particles = N_particles
@@ -72,7 +74,9 @@ class EU_formation_sim():
             self.delta_c = delta_c
             self.dist_type = dist_type
             self.Mass_power = Mass_power
-                                
+            self.dir_plot = dir_plot
+            self.dir_gif = dir_gif       
+                         
             self.G = 6.67430e-11   # m^3 kg^-1 s^-2
             self.c = 299792458     # m/s
             self.h_bar = 1.054571917e-34  # Joule*s
@@ -109,7 +113,8 @@ class EU_formation_sim():
                                             dt = self.dt,
                                             Background_pars = self.Pars, #[Omega_m, Omega_r, Omega_l, Ho, sf_ref]
                                             a_target = self.Start_sf,
-                                            plot = True)
+                                            plot = True,
+                                            dir= self.dir_plot)
             
         
         
@@ -154,7 +159,7 @@ class EU_formation_sim():
             for i, particle in enumerate(particles):
                 Positions_tensor[0, i, :] = particle.position
 
-            for t in range(1, Time):
+            for t in range(1, int(Time)):
                 try:
                     self.runge_kutta_step( particles, dt, scale_factors_list[t-1], Scale_factor_dots[t-1])
                     
@@ -163,8 +168,8 @@ class EU_formation_sim():
                     break
 
                 for i, particle in enumerate(particles):
-                    particle.update_position(scale_factors_list[t], scale_factors_list[t-1])
-                    Positions_tensor[t, i, :] = particle.position
+                    particle.update_position(scale_factors_list[t-1], scale_factors_list[t-1])
+                    Positions_tensor[t-1, i, :] = particle.position
                 
                 print(f"t = {t}")
 
@@ -197,29 +202,31 @@ class EU_formation_sim():
             if self.dist_type == 'Uniform':
                 return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad)
             elif self.dist_type == 'Gaussian_RF':
-                return generate_gaussian_RF(self.N_particles)
+                return generate_gaussian_RF(N_particles=self.N_particles, Pars=self.Pars, sim_rad= self.sim_rad)
             elif self.dist_type == 'Scale_invarient_spectrum':
-                return generate_scale_invariant_spectrum(self.N_particles)
+                return generate_scale_invariant_spectrum(N_particles= self.N_particles, sim_rad= self.sim_rad, Pars=self.Pars)
             
-            elif self.dist_type == 'Adiabatic':
-                positions, velocities = generate_adiabatic_perturbations(self.N_particles)
-                return particles_from_arrays(positions, velocities)
-            elif self.dist_type == 'Isocurvature':
-                positions, particle_types = generate_isocurvature_perturbations(self.N_particles)
-                return particles_from_isocurvature(positions, particle_types)
+            #elif self.dist_type == 'Adiabatic':
+            #    positions, velocities = generate_adiabatic_perturbations(N_particles=self.N_particles, Pars= self.Pars, sim_rad=self.sim_rad,Sf_start=self.List_sf[0])
+            #    return particles_from_arrays(positions, velocities)
+            
+            #elif self.dist_type == 'Isocurvature':
+            #    positions, particle_types = generate_isocurvature_perturbations(self.N_particles, Pars= self.Pars, sim_rad=self.sim_rad)
+            #    return particles_from_isocurvature(positions, particle_types)
+            
             else:
                 print(f"Warning: Distribution type '{self.dist_type}' not recognized. Using Uniform distribution.")
                 return generate_uniform_distribution(self.N_particles)
 
 
 
-        def compute_gravitational_acceleration(self, particles):
+        def compute_gravitational_acceleration(self, particles, sf):
             num_particles = len(particles)
             masses = cp.array([particle.mass for particle in particles])
             positions = cp.array([particle.position for particle in particles])
 
             # Add softening parameter to prevent singularities
-            softening = 1.0e3  # Adjust based on your simulation scale
+            softening = 5.0  
 
             accelerations = cp.zeros((num_particles, 3))
 
@@ -228,7 +235,7 @@ class EU_formation_sim():
                 distances_squared = cp.sum(pos_diff**2, axis=1)
                 distances_squared = cp.where(distances_squared > 0, distances_squared + softening**2, 1e20)
 
-                force_magnitudes = self.G * masses / (distances_squared * cp.sqrt(distances_squared))
+                force_magnitudes = self.G * masses / (distances_squared * cp.sqrt(distances_squared)) / (sf**3)
 
                 # Zero out self-interaction
                 force_magnitudes[i] = 0
@@ -242,35 +249,34 @@ class EU_formation_sim():
 
 
         def runge_kutta_step(self, particles, dt, sf, sf_dot):
+
+            
             num_particles = len(particles)
             positions = cp.array([p.position for p in particles])
             velocities = cp.array([p.velocity for p in particles])
 
-            # Store the original positions and velocities
+        
             original_positions = positions.copy()
             original_velocities = velocities.copy()
 
-            # Calculate accelerations once at the beginning
-            accelerations = self.compute_gravitational_acceleration(particles)
-
-            # Compute k1
-            k1_v = -2 * (sf_dot/sf) * original_velocities + accelerations/(sf**3)
+            pos_phys = positions * sf
+            
+            accelerations = self.compute_gravitational_acceleration(particles, sf)
+            
+            k1_v = accelerations - 2 * (sf_dot/sf) * original_velocities
             k1_r = original_velocities
 
-            # Update positions and velocities for k2 calculation
             temp_positions = original_positions + 0.5 * dt * k1_r
             temp_velocities = original_velocities + 0.5 * dt * k1_v
 
-            # Update particle positions for acceleration calculation
             for i, p in enumerate(particles):
                 p.position = temp_positions[i]
                 p.velocity = temp_velocities[i]
 
-            # Calculate new accelerations
-            accelerations = self.compute_gravitational_acceleration(particles)
 
-            # Compute k2
-            k2_v = -2 * (sf_dot/sf) * temp_velocities + accelerations/(sf**3)
+            accelerations = self.compute_gravitational_acceleration(particles, sf)
+            
+            k2_v = accelerations - 2 * (sf_dot/sf) * temp_velocities
             k2_r = temp_velocities
 
             # Update positions and velocities for k3 calculation
@@ -281,10 +287,10 @@ class EU_formation_sim():
                 p.position = temp_positions[i]
                 p.velocity = temp_velocities[i]
 
-            accelerations = self.compute_gravitational_acceleration(particles)
+            accelerations = self.compute_gravitational_acceleration(particles, sf)
 
             # Compute k3
-            k3_v = -2 * (sf_dot/sf) * temp_velocities + accelerations/(sf**3)
+            k3_v = accelerations - 2 * (sf_dot/sf) * temp_velocities
             k3_r = temp_velocities
 
             # Update positions and velocities for k4 calculation
@@ -295,16 +301,18 @@ class EU_formation_sim():
                 p.position = temp_positions[i]
                 p.velocity = temp_velocities[i]
 
-            accelerations = self.compute_gravitational_acceleration(particles)
+            accelerations = self.compute_gravitational_acceleration(particles, sf)
 
             # Compute k4
-            k4_v = -2 * (sf_dot/sf) * temp_velocities + accelerations/(sf**3)
+            k4_v = accelerations - 2 * (sf_dot/sf) * temp_velocities
             k4_r = temp_velocities
 
             # Final update
             for i, particle in enumerate(particles):
                 particle.velocity = original_velocities[i] + dt / 6 * (k1_v[i] + 2 * k2_v[i] + 2 * k3_v[i] + k4_v[i])
                 particle.position = original_positions[i] + dt / 6 * (k1_r[i] + 2 * k2_r[i] + 2 * k3_r[i] + k4_r[i])
+                print(particle.position)
+                
 
 
         
@@ -374,9 +382,11 @@ class EU_formation_sim():
 
             anim = FuncAnimation(fig, update, frames=len(positions_tensor_np), interval=100, blit=True)
 
-            directory = r'C:\Users\Kiran\Desktop\PBh\gifs'
+                                 
+            directory = self.dir_gif
+            
             os.makedirs(directory, exist_ok=True)
-            file_path = get_unique_filename(directory, "n_body_fixed", ".gif")
+            file_path = get_unique_filename(directory, "n_body", ".gif")
 
             try:
                 anim.save(file_path, writer='pillow', fps=10)
@@ -390,14 +400,30 @@ class EU_formation_sim():
 
 
 sim = EU_formation_sim(
-    N_particles=500,
-    Start_sf=1e-12,
-    Time=2000000000000.0,
-    dt=100000000000,  # Reduce time step for better stability
+    N_particles=50,
+    Start_sf=1e-13,
+    Time=100000000.0,
+    dt=10000000,  # Reduce time step for better stability
     sim_rad=1.0e6,
     delta_c=0.45,
-    dist_type='Gaussian_RF'
+    dist_type='Gaussian_RF',
+    dir_plot = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\Plots',
+    dir_gif = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\N_body_gifs'
 )
 sim.Run_simulation(Set_Particles_rigidly=True)
+ 
+ 
+ 
+ #Todo:
+    #- Finish up tweaking the distributions
+    #- add in visualizations for each dsitributions and a directory for them
+    #- incorporate CMBagent or some sort of agent code to create a RAG agent 
+        #(This is to source parameters, so i can simply prompt it to get the appropriate parameter values)
+    # Fully test wether the gravity works(probably does work, just need enough partricles)
+    # Find a way to tweak softening param in compute grav
+    # Create a PBH formation check
+    # Develop agents for resutls analysis
+ 
+ 
     
     

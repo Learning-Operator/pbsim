@@ -173,32 +173,59 @@ def Expansion(Time,
 
     def plot_data(dir):
         
-        plt.figure(figsize=(10, 5))
-        plt.plot(time.get(), Scale_factors.get(), label="Scale Factor (SF)", color='b')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Scale Factor")
-        plt.title("Evolution of Scale Factor ")
-        plt.legend()
-        plt.grid()
+        fig = plt.figure(figsize=(16,10))
         
-        plt.figure(figsize=(10, 5))
-        plt.plot(time.get(), Scale_factor_dots.get(), label="SF Derivative (SFdot)", color='r')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Rate of Change of Scale Factor")
-        plt.title("Evolution of Scale Factor Derivative")
-        plt.legend()
-        plt.grid()
-
-
-        plt.figure(figsize=(10, 5))
-        plt.plot(time.get(), Hubbles.get(), label="Hubble Parameter over time", color='r')
-        plt.xlabel("Time (s)")
-        plt.ylabel("Hubble Parameter")
-        plt.title("Evolution of Hubble parameter")
-        plt.legend()
-        plt.grid()
+        ax1 = fig.add_subplot(2, 2, 1)
+        ax1.plot(time.get(), Scale_factors.get(), label="Scale Factor (SF)", color='b')
         
-        plt.savefig(dir)
+        time_array = time.get()
+        x_sqrt = np.linspace(time_array.min(), time_array.max(), 100)
+        # Scale the sqrt function to have a similar range as the original data
+        y_sqrt = np.sqrt(x_sqrt - time_array.min())
+        # Scale the sqrt function to match the amplitude of the original data
+        scaling_factor = Scale_factors.get().max() / y_sqrt.max()
+        y_sqrt = y_sqrt * scaling_factor
+
+        ax1.plot(x_sqrt, y_sqrt, label="Sqrt Function", color='g', linestyle='--')
+        
+        ax1.set_xlabel("Time (s)")
+        ax1.set_ylabel("Scale Factor")
+        ax1.set_title("Evolution of Scale Factor ")
+        ax1.legend()
+        ax1.grid()
+        
+        ax2 = fig.add_subplot(2, 2, 2)
+        ax2.plot(time.get(), Scale_factor_dots.get(), label="SF Derivative (SFdot)", color='r')
+        ax2.set_xlabel("Time (s)")
+        ax2.set_ylabel("Rate of Change of Scale Factor")
+        ax2.set_title("Evolution of Scale Factor Derivative")
+        ax2.legend()
+        ax2.grid()
+
+        ax3 = fig.add_subplot(2, 2, 3)
+        ax3.plot(time.get(), Hubbles.get(), label="Hubble Parameter over time", color='r')
+        ax3 = fig.add_subplot(2, 2, 3)
+        ax3.plot(time.get(), Hubbles.get(), label="Hubble Parameter over time", color='r')
+        ax3.set_xlabel("Time (s)")
+        ax3.set_ylabel("Hubble Parameter")
+        ax3.set_title("Evolution of Hubble parameter")
+        ax3.legend()
+        ax3.grid()
+        
+        file_name = 'Sf_expansion'
+        file_extension = '.png'
+        number = 1
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        while True:
+            file_path = os.path.join(dir, f"{file_name}_{number}{file_extension}")
+            if not os.path.exists(file_path):
+                break
+            number += 1
+        
+        
+        
+        plt.savefig(file_path)
         
         plt.show()
         
