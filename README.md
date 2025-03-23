@@ -22,6 +22,10 @@ This repository contains computational simulations investigating the existence p
 
   ![n_body_fixed_5](https://github.com/user-attachments/assets/98e1f186-3c22-456f-8c7a-26920ba469af)
 
+  ![n_body_3](https://github.com/user-attachments/assets/7fb61be2-f9a2-4d0b-af3f-d78c3de038b8)
+
+  ![n_body_8](https://github.com/user-attachments/assets/8592c885-9663-4477-82a3-0443463850c4)
+
 
 ## 🌠 Theoretical Framework
 
