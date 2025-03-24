@@ -178,15 +178,15 @@ def Expansion(Time,
         ax1 = fig.add_subplot(2, 2, 1)
         ax1.plot(time.get(), Scale_factors.get(), label="Scale Factor (SF)", color='b')
         
-        time_array = time.get()
-        x_sqrt = np.linspace(time_array.min(), time_array.max(), 100)
-        # Scale the sqrt function to have a similar range as the original data
-        y_sqrt = np.sqrt(x_sqrt - time_array.min())
-        # Scale the sqrt function to match the amplitude of the original data
-        scaling_factor = Scale_factors.get().max() / y_sqrt.max()
-        y_sqrt = y_sqrt * scaling_factor
+        # time_array = time.get()
+        # x_sqrt = np.linspace(time_array.min(), time_array.max(), 100)
+        # # Scale the sqrt function to have a similar range as the original data
+        # y_sqrt = np.sqrt(x_sqrt - time_array.min())
+        # # Scale the sqrt function to match the amplitude of the original data
+        # scaling_factor = Scale_factors.get().max() / y_sqrt.max()
+        # y_sqrt = y_sqrt * scaling_factor
 
-        ax1.plot(x_sqrt, y_sqrt, label="Sqrt Function", color='g', linestyle='--')
+        # ax1.plot(x_sqrt, y_sqrt, label="Sqrt Function", color='g', linestyle='--')
         
         ax1.set_xlabel("Time (s)")
         ax1.set_ylabel("Scale Factor")
@@ -215,14 +215,21 @@ def Expansion(Time,
         file_name = 'Sf_expansion'
         file_extension = '.png'
         number = 1
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+        dir = dir
+
+        os.makedirs(dir, exist_ok=True)
+
         while True:
-            file_path = os.path.join(dir, f"{file_name}_{number}{file_extension}")
-            if not os.path.exists(file_path):
-                break
-            number += 1
-        
+            trial_dir = os.path.join(dir, f"trial_{number}")
+            os.makedirs(trial_dir, exist_ok=True)  # Create the trial directory if it doesn't exist
+
+            file_path = os.path.join(trial_dir, f"{file_name}{file_extension}")
+
+            if not os.path.exists(file_path):  # Check if the file does not already exist
+                break  # Exit loop if unique file path is found
+            
+            number += 1  # Increment number to try a new directory
+
         
         
         plt.savefig(file_path)

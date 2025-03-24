@@ -61,7 +61,8 @@ class EU_formation_sim():
                      dist_type = '', # Uniform, Gaussian_RF, Scale_invarient_spectrum, Adiabatic, Isocurvature
                      Mass_power = None,
                      dir_plot = None,      
-                     dir_gif = None               
+                     dir_gif = None,
+                     softener = None               
                      ):
             
             self.N_particles = N_particles
@@ -75,7 +76,8 @@ class EU_formation_sim():
             self.dist_type = dist_type
             self.Mass_power = Mass_power
             self.dir_plot = dir_plot
-            self.dir_gif = dir_gif       
+            self.dir_gif = dir_gif  
+            self.softener = softener     
                          
             self.G = 6.67430e-11   # m^3 kg^-1 s^-2
             self.c = 299792458     # m/s
@@ -197,12 +199,13 @@ class EU_formation_sim():
             
     
         def Create_particles(self):
+            
             """Creates particles based on the specified distribution type"""
     
             if self.dist_type == 'Uniform' or self.dist_type == "uniform":
                 return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100]) # This needs to be user set!!!!
             elif self.dist_type == 'Gaussian_RF':
-                return generate_gaussian_RF(N_particles=self.N_particles, Pars=self.Pars, sim_rad= self.sim_rad)
+                return generate_gaussian_RF(N_particles=self.N_particles, Pars=self.Pars, sim_rad= self.sim_rad, dir = self.dir_plot)
             elif self.dist_type == 'Scale_invarient_spectrum':
                 return generate_scale_invariant_spectrum(N_particles= self.N_particles, sim_rad= self.sim_rad, Pars=self.Pars)
             
@@ -220,13 +223,13 @@ class EU_formation_sim():
 
 
 
-        def compute_gravitational_acceleration(self, particles, sf):
+        def compute_gravitational_acceleration(self, particles, sf):             
             num_particles = len(particles)
             masses = cp.array([particle.mass for particle in particles])
             positions = cp.array([particle.position for particle in particles])
 
             # Add softening parameter to prevent singularities
-            softening = 5.0  
+            softening = self.softener 
 
             accelerations = cp.zeros((num_particles, 3))
 
@@ -244,8 +247,6 @@ class EU_formation_sim():
                     accelerations[i, j] = cp.sum(force_magnitudes * pos_diff[:, j])
 
             return accelerations
-
-
 
 
         def runge_kutta_step(self, particles, dt, sf, sf_dot):
@@ -266,7 +267,7 @@ class EU_formation_sim():
             k1_v = accelerations - 2 * (sf_dot/sf) * original_velocities
             k1_r = original_velocities
 
-            temp_positions = original_positions + 0.5 * dt * k1_r
+            temp_positions = original_positions + 0.5 * dt *    k1_r
             temp_velocities = original_velocities + 0.5 * dt * k1_v
 
             for i, p in enumerate(particles):
@@ -345,7 +346,7 @@ class EU_formation_sim():
                 positions_tensor_np[0, :, 1],
                 positions_tensor_np[0, :, 2],
                 c=colors, 
-                s=10
+                s=3
             )
 
             ax.set_xlim(x_min - margin, x_max + margin)
@@ -371,11 +372,18 @@ class EU_formation_sim():
             def get_unique_filename(directory, base_name, extension=".gif"):
                 """Ensure the file doesn't overwrite an existing one by appending a number if needed."""
                 counter = 1
-                file_path = os.path.join(directory, f"{base_name}{extension}")
+                os.makedirs(os.path.join(directory, f"trial_{counter}"), exist_ok=True)
+                file_path = os.path.join(directory, f"trial_{counter}\\", f"{base_name}{extension}")
 
                 while os.path.exists(file_path):
-                    file_path = os.path.join(directory, f"{base_name}_{counter}{extension}")
+                    folder_path = os.path.join(directory, f"trial_{counter}")
+                    os.makedirs(folder_path, exist_ok=True)
+                    file_path = os.path.join(directory, f"trial_{counter}", f"{base_name}{extension}")
+                    if not os.path.exists(file_path):
+                        return file_path
+                    
                     counter += 1
+                    
 
                 return file_path
 
@@ -401,12 +409,13 @@ class EU_formation_sim():
 
 sim = EU_formation_sim(
     N_particles=50,
-    Start_sf=1e-13,
-    Time=100000000.0,
-    dt=10000000,  # Reduce time step for better stability
+    softener = 10000,
+    Start_sf=1,
+    Time=10000.0,
+    dt=1,  # Reduce time step for better stability
     sim_rad=1.0e6,
     delta_c=0.45,
-    dist_type='Scale_invarient_spectrum',
+    dist_type='Gaussian_RF',
     dir_plot = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\Plots',
     dir_gif = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\N_body_gifs'
 )
@@ -415,7 +424,6 @@ sim.Run_simulation(Set_Particles_rigidly=True)
  
  
  #Todo:
-    #- Fully test wether the gravity works(probably does work, just need enough partricles)
     #- incorporate CMBagent or some sort of agent code to create a RAG agent 
         #(This is to source parameters, so i can simply prompt it to get the appropriate parameter values)
     # Find a way to tweak softening param in compute grav

@@ -2,6 +2,8 @@ import cupy as cp
 from Functions.Particles import Particle, MassParticle, RadiationParticle
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+
 
 G = 6.67430e-11   # m^3 kg^-1 s^-2
 c = 299792458     # m/s
@@ -9,7 +11,7 @@ h_bar = 1.054571917e-34  # Joule*s
 
 
 
-def plot_heat_map(field, sim_rad, n):
+def plot_heat_map(field, sim_rad, n, dir):
     # Project the 3D field onto the 2D planes
     x = np.linspace(-sim_rad, sim_rad, n)
     y = np.linspace(-sim_rad, sim_rad, n)
@@ -52,12 +54,38 @@ def plot_heat_map(field, sim_rad, n):
     axes[2].set_xlabel('Y')
     axes[2].set_ylabel('Z')
     fig.colorbar(im2, ax=axes[2])
+    
+    file_name = 'Dist_map'
+    file_extension = '.png'
+    number = 1
+    dir = dir
+
+    os.makedirs(dir, exist_ok=True)
+
+    while True:
+        trial_dir = os.path.join(dir, f"trial_{number}")
+        print(trial_dir)
+        os.makedirs(trial_dir, exist_ok=True) 
+
+        file_path = os.path.join(trial_dir, f"{file_name}{file_extension}")
+
+        if not os.path.exists(file_path):  
+            os.makedirs(trial_dir, exist_ok=True)
+            print("THIS PATH DOES NOT EXIST")
+            break  
+        
+        number += 1  # Increment number to try a new directory
+
+        
+        
+    plt.savefig(file_path)
 
     plt.tight_layout()
     plt.show()
 
 
-def plot_3d_distribution(particles):
+
+def plot_3d_distribution(particles, dir):
     projections = ['XY', 'XZ', 'YZ']
     axes_labels = [('X', 'Y'), ('X', 'Z'), ('Y', 'Z')]
 
@@ -68,25 +96,52 @@ def plot_3d_distribution(particles):
         matter_positions = matter_positions.get()
     if len(radiation_positions) > 0:
         radiation_positions = radiation_positions.get()
-
+    
+    os.makedirs(dir, exist_ok=True)
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+     
     for i, (proj, labels) in enumerate(zip(projections, axes_labels)):
-        plt.figure(figsize=(6, 6))
-
+        
+        
         if len(matter_positions) > 0:
-            plt.scatter(matter_positions[:, i % 3], matter_positions[:, (i + 1) % 3], 
+            axes[i].scatter(matter_positions[:, i % 3], matter_positions[:, (i + 1) % 3], 
                         s=2, color='blue', alpha=0.5, label="Mass Particles")
 
         if len(radiation_positions) > 0:
-            plt.scatter(radiation_positions[:, i % 3], radiation_positions[:, (i + 1) % 3], 
+            axes[i].scatter(radiation_positions[:, i % 3], radiation_positions[:, (i + 1) % 3], 
                         s=2, color='red', alpha=0.5, label="Radiation Particles")
 
-        plt.xlabel(labels[0])
-        plt.ylabel(labels[1])
-        plt.title(f'{proj} Projection')
-        plt.legend()
-        plt.show()
+        axes[i].set_xlabel(labels[0])
+        axes[i].set_xlabel(labels[1])
+        axes[i].set_title(f'{proj} Projection')
+        axes[i].legend()
+    
+        
+        file_name = '3d_particle_layout'
+        file_extension = '.png'
+        number = 1
+        dir = dir
+        while True:
+            trial_dir = os.path.join(dir, f"trial_{number}")
+            print(trial_dir)
+            os.makedirs(trial_dir, exist_ok=True) 
 
-def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_range):
+            file_path = os.path.join(trial_dir, f"{file_name}{file_extension}")
+
+            if not os.path.exists(file_path):  
+                os.makedirs(trial_dir, exist_ok=True)
+                print("THIS PATH DOES NOT EXIST")
+                break  
+            
+            number += 1  # Increment number to try a new directory
+
+            
+            
+    plt.savefig(file_path)
+
+    plt.show()
+
+def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_range, dir):
     """Generate particles with uniform distribution within a sphere"""
     particles = []
 
@@ -155,7 +210,7 @@ def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_ran
 
             particles.append(RadiationParticle(energy= Energy_per_Radiation_particle, position = (cp.array([x_Rad , y_Rad , z_Rad ])), velocity = velocity_Rad))
 
-    plot_3d_distribution(particles)
+    plot_3d_distribution(particles, dir)
     
     return particles
 
@@ -232,7 +287,7 @@ def apply_mass_power_spectrum( positions, base_masses, Pars, sim_rad, n_s, n):
 
     return modulated_masses
 
-def generate_gaussian_RF(N_particles, Pars, sim_rad):
+def generate_gaussian_RF(N_particles, Pars, sim_rad, dir):
     """Generate particles with positions following a Gaussian random field"""
     n = 100
     x = cp.linspace(-sim_rad, sim_rad, n)
@@ -311,7 +366,8 @@ def generate_gaussian_RF(N_particles, Pars, sim_rad):
         particles.append(RadiationParticle(energy=base_radiation_energies[i], position=pos, velocity=vel))
 
 
-    plot_heat_map(field, sim_rad, n)
+    plot_heat_map(field, sim_rad, n, dir)
+    plot_3d_distribution(particles, dir)
 
     return particles
 
