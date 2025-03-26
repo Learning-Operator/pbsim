@@ -1,0 +1,30 @@
+# Ignore build directories and distribution files
+/build/
+/dist/
+/*.egg-info
+
+# Ignore Python bytecode files
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore virtual environment directories
+venv/
+env/
+
+# Ignore log files and temporary files
+*.log
+*.tmp
+*.swp
+
+# Ignore outputs such as images, plots, and gifs
+**/outputs/
+**/N_body_gifs/
+**/Plots/
+
+# Ignore old functions or deprecated code
+**/old/
+
+# Ignore system files (macOS, Windows)
+.DS_Store
+Thumbs.db
