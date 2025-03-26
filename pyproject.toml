@@ -6,9 +6,8 @@ requires = ["setuptools",
 build-backend = "setuptools.build_meta"
 
 [project]
-version = "0.01B"
+version = "0.01b"
 name = "PBsim" 
-dynamic = ["version"]
 description = "A Python package for N-body hydrodynamic simulations of early universe dynamics and primordial black hole formation"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -16,25 +15,16 @@ authors = [
     { name = "Tanay", email = "Tanayvajhala@gmail.com" },
 ]
 keywords = ["PBHs", "Hydrodynamics", "Simulations", "Early Universe"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.9",
-    "Topic :: Software Development :: Libraries"
-]
 
 # Runtime dependencies
 dependencies = [
     "numpy",
     "pandas",
     "cupy",
-    "matplotlib.pyplot",
-    "matplotlib.animation"
+    "matplotlib"
 ]
 
 [project.urls]
-"Documentation" = ""
 "Source" = "https://github.com/Learning-Operator/pbsim"
 "Issues" = "https://github.com/Learning-Operator/pbsim/issues"
 
