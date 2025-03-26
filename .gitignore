@@ -1,31 +1,44 @@
-# Ignore build directories and distribution files
-/build/
-/dist/
-/*.egg-info
-
-# Ignore Python bytecode files
+# Ignore Python compiled files
+__pycache__/
 *.pyc
 *.pyo
-__pycache__/
+*.pyd
 
-# Ignore virtual environment directories
-.venvs/
-venv/
-env/
+# Ignore build and distribution directories
+build/
+dist/
+*.egg-info/
 
-# Ignore log files and temporary files
+# Ignore logs and system files
 *.log
-*.tmp
-*.swp
-
-# Ignore outputs such as images, plots, and gifs
-**/outputs/
-**/N_body_gifs/
-**/Plots/
-
-# Ignore old functions or deprecated code
-**/old/
-
-# Ignore system files (macOS, Windows)
 .DS_Store
 Thumbs.db
+
+# Ignore virtual environments
+venv/
+.env/
+*.venv
+
+# Ignore output files and generated plots
+PBsim/outputs/
+PBsim/outputs/N_body_gifs/
+PBsim/outputs/Plots/
+
+# Ignore old directories
+PBsim/lib/old/
+PBsim/outputs/N_body_gifs/old/
+
+# Ignore trial-specific subdirectories in outputs
+PBsim/outputs/N_body_gifs/trial_*/
+PBsim/outputs/Plots/trial_*/
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore any temporary or backup files
+*.bak
+*.tmp
+*.~*
