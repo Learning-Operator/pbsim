@@ -15,9 +15,6 @@ class Particle:
         self.position = self.position * (scale_factor/SF_Prev)
 
 
-
-
-
 class MassParticle(Particle):
     def __init__(self, mass, position, velocity):
         super().__init__(mass, position, velocity)

@@ -228,8 +228,7 @@ class EU_formation_sim():
             masses = cp.array([particle.mass for particle in particles])
             positions = cp.array([particle.position for particle in particles])
 
-            # Add softening parameter to prevent singularities
-            softening = self.softener 
+            softening = self.softener  # how can i dynamically tweak this based on number of particles and sim size?
 
             accelerations = cp.zeros((num_particles, 3))
 
@@ -238,13 +237,13 @@ class EU_formation_sim():
                 distances_squared = cp.sum(pos_diff**2, axis=1)
                 distances_squared = cp.where(distances_squared > 0, distances_squared + softening**2, 1e20)
 
-                force_magnitudes = self.G * masses / (distances_squared * cp.sqrt(distances_squared)) / (sf**3)
+                acc = self.G * masses / (distances_squared * cp.sqrt(distances_squared)) / (sf**3)
 
                 # Zero out self-interaction
-                force_magnitudes[i] = 0
+                acc[i] = 0
 
                 for j in range(3):  # For each dimension
-                    accelerations[i, j] = cp.sum(force_magnitudes * pos_diff[:, j])
+                    accelerations[i, j] = cp.sum(acc * pos_diff[:, j])
 
             return accelerations
 
@@ -408,10 +407,10 @@ class EU_formation_sim():
 
 
 sim = EU_formation_sim(
-    N_particles=50,
-    softener = 10000,
+    N_particles=500,
+    softener = 1000, # 
     Start_sf=1,
-    Time=10000.0,
+    Time=4.0,
     dt=1,  # Reduce time step for better stability
     sim_rad=1.0e6,
     delta_c=0.45,
@@ -424,8 +423,11 @@ sim.Run_simulation(Set_Particles_rigidly=True)
  
  
  #Todo:
-    #- incorporate CMBagent or some sort of agent code to create a RAG agent 
+    #- incorporate aspect of CMBagent or some sort of agent code to create a RAG agent 
         #(This is to source parameters, so i can simply prompt it to get the appropriate parameter values)
+        #  Analytics?
+        #  possibly smooth it and try to incorporate other types fo parameters and values
+
     # Find a way to tweak softening param in compute grav
     # Create a PBH formation check
     # Develop agents for resutls analysis
