@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 version = "0.01B"
-name = "pbsim" 
+name = "PBsim" 
 dynamic = ["version"]
 description = "A Python package for N-body hydrodynamic simulations of early universe dynamics and primordial black hole formation"
 readme = "README.md"
@@ -18,9 +18,9 @@ authors = [
 keywords = ["PBHs", "Hydrodynamics", "Simulations", "Early Universe"]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Software Development :: Libraries"
 ]
 
@@ -43,4 +43,4 @@ dependencies = [
 write_to = "pbsim/version.py"  # Where to write the dynamic version
 
 [tool.setuptools.packages.find]
-where = ["."]
+exclude = ["output"]
