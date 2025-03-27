@@ -6,6 +6,7 @@ from matplotlib.animation import FuncAnimation
 import os
 import cupy as cp
 from functions.SF_generation import Expansion, scale_back_initial
+from functions.File_naming import get_unique_filename
 from functions.Particles import Particle, RadiationParticle, MassParticle
 from functions.Distributions import generate_uniform_distribution, \
                           generate_gaussian_RF, \
@@ -55,8 +56,6 @@ class EU_formation_sim():
                      Background_parameters = None, #[Omega_m, Omega_r, Omega_l, Ho, sf_ref]
                      dist_type = '', # Uniform, Gaussian_RF, Scale_invarient_spectrum, Adiabatic, Isocurvature
                      Mass_power = None,
-                     dir_plot = None,      
-                     dir_gif = None,
                      softener = None               
                      ):
             
@@ -70,13 +69,14 @@ class EU_formation_sim():
             self.delta_c = delta_c
             self.dist_type = dist_type
             self.Mass_power = Mass_power
-            self.dir_plot = dir_plot
-            self.dir_gif = dir_gif  
             self.softener = softener     
                          
             self.G = 6.67430e-11   # m^3 kg^-1 s^-2
             self.c = 299792458     # m/s
             self.h_bar = 1.054571917e-34  # Joule*s
+            
+            self.output_dir = 'PBsim\\output'
+            os.makedirs(self.output_dir , exist_ok= True)
                     
             def calc_def_pars(): # Remove this later and change it
                 
@@ -111,7 +111,7 @@ class EU_formation_sim():
                                             Background_pars = self.Pars, #[Omega_m, Omega_r, Omega_l, Ho, sf_ref]
                                             a_target = self.Start_sf,
                                             plot = True,
-                                            dir= self.dir_plot)
+                                            dir= self.output_dir)
             
         
         
@@ -198,11 +198,11 @@ class EU_formation_sim():
             """Creates particles based on the specified distribution type"""
     
             if self.dist_type == 'Uniform' or self.dist_type == "uniform":
-                return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100]) # This needs to be user set!!!!
+                return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100], output_fold = self.output_dir) # This needs to be user set!!!!
             elif self.dist_type == 'Gaussian_RF':
-                return generate_gaussian_RF(N_particles=self.N_particles, Pars=self.Pars, sim_rad= self.sim_rad, dir = self.dir_plot)
+                return generate_gaussian_RF(N_particles=self.N_particles, Pars=self.Pars, sim_rad= self.sim_rad, output_fold= self.output_dir)
             elif self.dist_type == 'Scale_invarient_spectrum':
-                return generate_scale_invariant_spectrum(N_particles= self.N_particles, sim_rad= self.sim_rad, Pars=self.Pars)
+                return generate_scale_invariant_spectrum(N_particles= self.N_particles, sim_rad= self.sim_rad, Pars=self.Pars, output_fold = self.output_dir)
             
             #elif self.dist_type == 'Adiabatic':
             #    positions, velocities = generate_adiabatic_perturbations(N_particles=self.N_particles, Pars= self.Pars, sim_rad=self.sim_rad,Sf_start=self.List_sf[0])
@@ -214,7 +214,7 @@ class EU_formation_sim():
             
             else:
                 print(f"Warning: Distribution type '{self.dist_type}' not recognized. Using Uniform distribution.")
-                return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100]) # This needs to be user set!!!!
+                return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100], output_fold = self.output_dir) # This needs to be user set!!!!
 
 
 
@@ -363,55 +363,50 @@ class EU_formation_sim():
                 time_text.set_text(f'Frame: {frame}/{len(positions_tensor_np)-1}')
                 return [scatter, time_text]
             
-            def get_unique_filename(directory, base_name, extension=".gif"):
-                """Ensure the file doesn't overwrite an existing one by appending a number if needed."""
-                counter = 1
-                os.makedirs(os.path.join(directory, f"trial_{counter}"), exist_ok=True)
-                file_path = os.path.join(directory, f"trial_{counter}\\", f"{base_name}{extension}")
+            # def get_unique_filename(directory, base_name, extension=".gif"):
+            #     """Ensure the file doesn't overwrite an existing one by appending a number if needed."""
+            #     counter = 1
+            #     os.makedirs(os.path.join(directory, f"trial_{counter}"), exist_ok=True)
+            #     file_path = os.path.join(directory, f"trial_{counter}\\", f"{base_name}{extension}")
 
-                while os.path.exists(file_path):
-                    folder_path = os.path.join(directory, f"trial_{counter}")
-                    os.makedirs(folder_path, exist_ok=True)
-                    file_path = os.path.join(directory, f"trial_{counter}", f"{base_name}{extension}")
-                    if not os.path.exists(file_path):
-                        return file_path
+            #     while os.path.exists(file_path):
+            #         folder_path = os.path.join(directory, f"trial_{counter}")
+            #         os.makedirs(folder_path, exist_ok=True)
+            #         file_path = os.path.join(directory, f"trial_{counter}", f"{base_name}{extension}")
+            #         if not os.path.exists(file_path):
+            #             return file_path
                     
-                    counter += 1
+            #         counter += 1
                     
 
-                return file_path
+            #     return file_path
 
 
             anim = FuncAnimation(fig, update, frames=len(positions_tensor_np), interval=100, blit=True)
-
-                                 
-            directory = self.dir_gif
-            
-            os.makedirs(directory, exist_ok=True)
-            file_path = get_unique_filename(directory, "n_body", ".gif")
+                            
+            file_path = get_unique_filename(output_folder = self.output_dir, output_type = 'gif', filename = "n_body", file_type = ".gif")
 
             try:
                 anim.save(file_path, writer='pillow', fps=10)
                 print(f"Animation saved as: {file_path}")
             except Exception as e:
                 print(f"Error saving animation: {e}")
-                plt.savefig(os.path.join(directory, "n_body_fixed_first_frame.png"))
+                plt.savefig(os.path.join(file_path, "n_body_fixed_first_frame.png"))
 
             plt.show()
 
 
 
 sim = EU_formation_sim(
-    N_particles=500,
+    N_particles=50,
     softener = 1000, # 
-    Start_sf=1,
-    Time=4.0,
+    Start_sf=1e-12,
+    Time=20.0,
     dt=1,  # Reduce time step for better stability
     sim_rad=1.0e6,
     delta_c=0.45,
     dist_type='Gaussian_RF',
-    dir_plot = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\Plots',
-    dir_gif = 'C:\\Users\\Kiran\\Desktop\\PBh\\Outputs\\N_body_gifs'
+    
 )
 sim.Run_simulation(Set_Particles_rigidly=True)
  

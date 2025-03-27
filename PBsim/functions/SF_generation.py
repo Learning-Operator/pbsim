@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import os
 import cupy as cp
+from functions.File_naming import get_unique_filename
 
 G = 6.67430e-11   # m^3 kg^-1 s^-2
 c = 299792458     # m/s
@@ -59,21 +60,7 @@ def scale_back_initial(initial_hubble,
     
     return rad_scaled, matter_scaled, DE_scaled, SFdot_0
 
-        
 
-def get_unique_filename(directory, base_name, extension=".png"):
-                """Ensure the file doesn't overwrite an existing one by appending a number if needed."""
-                counter = 1
-                file_path = os.path.join(directory, f"{base_name}{extension}")
-
-                while os.path.exists(file_path):
-                    file_path = os.path.join(directory, f"{base_name}_{counter}{extension}")
-                    counter += 1
-
-                return file_path
-
-        
-        
 def Expansion(Time,
               dt,
               Background_pars, 
@@ -212,25 +199,7 @@ def Expansion(Time,
         ax3.legend()
         ax3.grid()
         
-        file_name = 'Sf_expansion'
-        file_extension = '.png'
-        number = 1
-        dir = dir
-
-        os.makedirs(dir, exist_ok=True)
-
-        while True:
-            trial_dir = os.path.join(dir, f"trial_{number}")
-            os.makedirs(trial_dir, exist_ok=True)  # Create the trial directory if it doesn't exist
-
-            file_path = os.path.join(trial_dir, f"{file_name}{file_extension}")
-
-            if not os.path.exists(file_path):  # Check if the file does not already exist
-                break  # Exit loop if unique file path is found
-            
-            number += 1  # Increment number to try a new directory
-
-        
+        file_path = get_unique_filename(output_folder = dir, output_type = 'fig', filename = "Scale_Factor_expansion", file_type = ".png")
         
         plt.savefig(file_path)
         

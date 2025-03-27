@@ -42,3 +42,5 @@ PBsim/outputs/Plots/trial_*/
 *.bak
 *.tmp
 *.~*
+PBsim/output/Figures/
+PBsim/output/Gifs/
