@@ -21,15 +21,15 @@ def plot_heat_map(field, sim_rad, n, output_fold):
 
     # Projection on XY plane (Z = 0)
     field_xy = field[n // 2, :, :]  # Taking the central slice in the z-direction
-    field_xy = field_xy.get()  # Ensure it's a NumPy array
+    field_xy = field_xy  # Ensure it's a NumPy array
 
     # Projection on XZ plane (Y = 0)
     field_xz = field[:, n // 2, :]
-    field_xz = field_xz.get()
+    field_xz = field_xz
 
     # Projection on YZ plane (X = 0)
     field_yz = field[:, :, n // 2]
-    field_yz = field_yz.get()
+    field_yz = field_yz
 
     # Plot the heatmaps for each projection
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
@@ -106,7 +106,7 @@ def plot_3d_distribution(particles, output_fold):
 
     plt.show()
 
-def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_range, output_fold):
+def generate_uniform_distribution( N_matter_particles,N_radiation_particles, Pars, sim_rad, mass_velocity_range, output_fold):
     """Generate particles with uniform distribution within a sphere"""
     particles = []
 
@@ -124,10 +124,10 @@ def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_ran
     
     # [Omega_m, Omega_r, Omega_l, Ho, sf_ref]
  
-    total_particles = N_particles
-    matter_fraction = Pars[0] / (Pars[0] + Pars[1])
-    n_matter_particles = int(total_particles * matter_fraction)
-    n_radiation_particles = total_particles - n_matter_particles
+    # total_particles = N_particles
+    # matter_fraction = Pars[0] / (Pars[0] + Pars[1])
+    n_matter_particles = N_matter_particles
+    n_radiation_particles = N_radiation_particles
     
 
     mass_per_matter_particle = total_matter_mass / n_matter_particles
@@ -182,56 +182,54 @@ def generate_uniform_distribution( N_particles, Pars, sim_rad, mass_velocity_ran
 def apply_mass_power_spectrum( positions, base_masses, Pars, sim_rad, n_s, n):
     """Apply mass power spectrum to a set of base particle masses"""
     
-    grid_size = sim_rad * 2
+    grid_size = sim_rad
+    
+    dtype = np.float32
 
-    kx = 2 * cp.pi * cp.fft.fftfreq(n, d=grid_size/n)
-    ky = 2 * cp.pi * cp.fft.fftfreq(n, d=grid_size/n)
-    kz = 2 * cp.pi * cp.fft.fftfreq(n, d=grid_size/n)
+    kx = 2 * np.pi * np.fft.fftfreq(n, d=grid_size/n)
+    ky = 2 * np.pi * np.fft.fftfreq(n, d=grid_size/n)
+    kz = 2 * np.pi * np.fft.fftfreq(n, d=grid_size/n)
 
-    kx_grid, ky_grid, kz_grid = cp.meshgrid(kx, ky, kz, indexing='ij')
+    kx_grid, ky_grid, kz_grid = np.meshgrid(kx, ky, kz, indexing='ij')
     
     
     
-    k_mag = cp.sqrt(kx_grid**2 + ky_grid**2 + kz_grid**2)
+    k_mag = np.sqrt(kx_grid**2 + ky_grid**2 + kz_grid**2)
     k_mag[k_mag == 0] = 1e-10  # Avoid division by zero
-
-    spherical = k_mag <= sim_rad
-    spherical[spherical == 0] = 0
 
     n_s = n_s
     k_cutoff = 10.0 / sim_rad  
     k_pivot = 0.05 / sim_rad 
     
-    power_spectrum = (k_mag/k_pivot)**(n_s-1) * cp.exp(-k_mag**2/k_cutoff**2)
-    print("I GOT TH POWAAAA:",power_spectrum)
+    power_spectrum = (k_mag/k_pivot)**(n_s-1) * np.exp(-k_mag**2/k_cutoff**2)
     
-    power_spectrum = power_spectrum * spherical
-    print("I GOT TH POWAAAA:",power_spectrum)
+    del kx, ky, kz, kx_grid, ky_grid, kz_grid
     
-    random_phases = cp.random.uniform(0, 2*cp.pi, k_mag.shape)
+    random_phases = np.random.uniform(0, 2*np.pi, k_mag.shape)
 
-    fourier_coeff = cp.sqrt(power_spectrum) * cp.exp(1j * random_phases)
+    fourier_coeff = np.sqrt(power_spectrum) * np.exp(1j * random_phases)
 
-    density_field = cp.fft.ifftn(fourier_coeff).real
+    density_field = np.fft.ifftn(fourier_coeff).real.astype(dtype)
+    
+    del fourier_coeff, random_phases, power_spectrum
+    
     print("DENSITTYYYY FIELDD:", density_field)
 
-    x = cp.linspace(-sim_rad, sim_rad, n)
-    y = cp.linspace(-sim_rad, sim_rad, n)
-    z = cp.linspace(-sim_rad, sim_rad, n)
-    X, Y, Z = cp.meshgrid(x, y, z, indexing="ij")
+    x = np.linspace(-sim_rad, sim_rad, n, dtype=dtype)
+    y = np.linspace(-sim_rad, sim_rad, n, dtype=dtype)
+    z = np.linspace(-sim_rad, sim_rad, n, dtype=dtype)
+    X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
     
-    r = cp.sqrt(X**2 + Y**2 + Z**2)
+    r = np.sqrt(X**2 + Y**2 + Z**2)
 
-    spherical_mask = r <= sim_rad
+    perturbation_amplitude = 0.8091  # Can be adjusted
+    density_field = 1.0 + perturbation_amplitude * (density_field - np.mean(density_field)) / np.std(density_field)
+
     
-    density_field *= spherical_mask
-    perturbation_amplitude = 1  # Can be adjusted
-    density_field = 1.0 + perturbation_amplitude * (density_field - cp.mean(density_field)) / cp.std(density_field)
-
-
+    del X, Y, Z, r
 
     # Map particles to density field
-    modulated_masses = cp.zeros(len(positions))
+    modulated_masses = cp.zeros(len(positions), dtype=dtype)
     grid_indices = []
     
     for i, pos in enumerate(positions):
@@ -252,59 +250,78 @@ def apply_mass_power_spectrum( positions, base_masses, Pars, sim_rad, n_s, n):
 
     return modulated_masses
 
-def generate_gaussian_RF(N_particles, Pars, sim_rad, output_fold):
-    """Generate particles with positions following a Gaussian random field"""
-    n = 100
-    x = cp.linspace(-sim_rad, sim_rad, n)
-    y = cp.linspace(-sim_rad, sim_rad, n)
-    z = cp.linspace(-sim_rad, sim_rad, n)
 
-    field = cp.zeros((n, n, n))
-    field = field <= sim_rad
+def generate_gaussian_RF( N_Matter_particles, N_Radiation_particles , Pars, sim_rad, output_fold):
+    """Generate particles with positions following a Gaussian random field"""
+    n = 256
+    dtype = np.float32
+    x = np.linspace(-sim_rad, sim_rad, n, dtype=dtype)
+    y = np.linspace(-sim_rad, sim_rad, n, dtype=dtype)
+    z = np.linspace(-sim_rad, sim_rad, n, dtype=dtype)
+
+    field = np.zeros((n, n, n))
     field[field == 0] = 0
     
-    k_space = cp.random.normal(0, 1, (n, n, n)) + 1j * cp.random.normal(0, 1, (n, n, n))
+    k_space = np.random.normal(0, 1, (n, n, n)) + 1j * np.random.normal(0, 1, (n, n, n))
 
-    k_x, k_y, k_z = cp.meshgrid(*[cp.fft.fftfreq(n, d=2*sim_rad/n) for _ in range(3)])
-    k_mag = cp.sqrt(k_x**2 + k_y**2 + k_z**2)
+    kx = np.fft.fftfreq(n)
+    ky = np.fft.fftfreq(n)
+    kz = np.fft.fftfreq(n)
+    k_x, k_y, k_z = np.meshgrid(kx, ky, kz)
+    
+    k_mag = np.sqrt(k_x**2 + k_y**2 + k_z**2)
     k_mag[0, 0, 0] = 1  # Avoid division by zero
 
     spectral_index = 0.965
     k_cutoff = 10.0 / sim_rad  
     k_pivot = 0.05 / sim_rad 
     
-    power_spectrum = (k_mag/k_pivot)**(spectral_index-1) * cp.exp(-k_mag**2/k_cutoff**2)
+    power_spectrum = (k_mag/k_pivot)**(1-spectral_index) # * cp.exp(-k_mag**2/k_cutoff**2)
     power_spectrum[0, 0, 0] = 0  
 
-    k_space *= cp.sqrt(power_spectrum)
+    k_space *= power_spectrum
 
-    field = cp.fft.ifftn(k_space).real
+    field = np.fft.ifftn(k_space).real.astype(dtype)
 
-    field = (field - cp.mean(field)) / cp.std(field)
+    field -= np.mean(field)
+    field /= np.std(field)
 
     particles = []
-    X, Y, Z = cp.meshgrid(x, y, z)
+    X, Y, Z = np.meshgrid(x, y, z)
 
-    mask = X**2 + Y**2 + Z**2 <= sim_rad**2
-    X_valid = X[mask]
-    Y_valid = Y[mask]
-    Z_valid = Z[mask]
-    field_valid = field[mask]
+    # mask = X**2 + Y**2 + Z**2 <= sim_rad**2
+    # X_valid = X[mask]
+    # Y_valid = Y[mask]
+    # Z_valid = Z[mask]
+    # field_valid = field[mask]
 
+    prob = np.exp(field)
+    prob = prob / np.sum(prob)
+    
+    prob_flat = prob.ravel()
+    X_flat = X.ravel()
+    Y_flat = Y.ravel()
+    Z_flat = Z.ravel()
+    
+    print(f"field: {field}")
 
-    prob = cp.exp(field_valid)
-    prob = prob / cp.sum(prob)
+    
+    indices_matter = np.random.choice(len(X_flat), size=N_Matter_particles, p=prob_flat)
+    indices_Radiation = np.random.choice(len(X_flat), size=N_Radiation_particles, p=prob_flat)
 
-    indices = cp.random.choice(len(X_valid), size=N_particles, p=prob)
+    positions_matter = np.array([[X_flat[i], Y_flat[i], Z_flat[i]] for i in indices_matter])
+    positions_Radiations = np.array([[X_flat[i], Y_flat[i], Z_flat[i]] for i in indices_Radiation])
+    
+    del X_flat, Y_flat, Z_flat, prob_flat
+    
+    # matter_fraction = Pars[0] / (Pars[0] + Pars[1])
+    # n_matter_particles = int(N_particles * matter_fraction)
+    
+    #n_radiation_particles = N_particles - n_matter_particles
 
-    positions = cp.array([[X_valid[i], Y_valid[i], Z_valid[i]] for i in indices])
-
-    matter_fraction = Pars[0] / (Pars[0] + Pars[1])
-    n_matter_particles = int(N_particles * matter_fraction)
-    n_radiation_particles = N_particles - n_matter_particles
-
-    volume = (4/3) * cp.pi * sim_rad**3
-    critical_density = 3 * (Pars[3])**2 / (8 * cp.pi * G)
+    volume = (4/3) * np.pi * sim_rad**3
+    critical_density = 3 * (Pars[3])**2 / (8 * np.pi * G)
+    
     matter_density = Pars[0] * critical_density
     radiation_density = Pars[1] * critical_density
 
@@ -312,26 +329,38 @@ def generate_gaussian_RF(N_particles, Pars, sim_rad, output_fold):
     
     total_radiation_energy = radiation_density * volume
 
-    matter_positions = positions[:n_matter_particles]
-    radiation_positions = positions[n_matter_particles:]
+    base_matter_masses = np.ones(N_Matter_particles) * (total_matter_mass / N_Matter_particles)
+    
+    base_radiation_energies = np.ones(N_Radiation_particles) * (total_radiation_energy / (N_Radiation_particles), dtype==dtype)
 
-    base_matter_masses = cp.ones(n_matter_particles) * (total_matter_mass / n_matter_particles)
-    base_radiation_energies = cp.ones(n_radiation_particles) * (total_radiation_energy / (n_radiation_particles))
+    modulated_matter_masses = apply_mass_power_spectrum(positions_matter, base_matter_masses, Pars= Pars, sim_rad=sim_rad, n_s = spectral_index, n = n)
 
-    modulated_matter_masses = apply_mass_power_spectrum(matter_positions, base_matter_masses, Pars= Pars, sim_rad=sim_rad, n_s = spectral_index, n = n)
-
-    for i in range(n_matter_particles):
-        pos = cp.array(matter_positions[i])
-        vel = cp.array([cp.random.normal(0, 100), cp.random.normal(0, 100), cp.random.normal(0, 100)])
+    for i in range(N_Matter_particles):
+        pos = np.array(positions_matter[i])
+        vel = np.array([0, 0, 0])
+        #vel = np.array([np.random.normal(-100, 100), np.random.normal(-100, 100), np.random.normal(-100, 100)])
         particles.append(MassParticle(modulated_matter_masses[i], pos, vel))
 
-    for i in range(n_radiation_particles):
-        pos = cp.array(radiation_positions[i])
-        vel = cp.array([cp.random.normal(0, 1), cp.random.normal(0, 1), cp.random.normal(0, 1)])
-        particles.append(RadiationParticle(energy=base_radiation_energies[i], position=pos, velocity=vel))
+    del positions_matter, modulated_matter_masses
+    
+    # for i in range(N_Radiation_particles):
+    #     pos = cp.array(positions_Radiations[i])
+        
+    #     velocity_Rad = cp.array([
+    #             cp.random.uniform(-1, 1),  
+    #             cp.random.uniform(-1, 1), 
+    #             cp.random.uniform(-1, 1)
+    #         ])
+            
+    #     velocity_Rad /= cp.linalg.norm(velocity_Rad)
+            
+    #     velocity_Rad = c * velocity_Rad
+        
+    #     particles.append(RadiationParticle(energy=base_radiation_energies[i], position=pos, velocity=velocity_Rad))
 
 
     plot_heat_map(field, sim_rad, n, output_fold)
+    #plot_heat_map(field_valid, sim_rad,n,output_fold)
     plot_3d_distribution(particles, output_fold)
 
     return particles
@@ -346,9 +375,11 @@ def generate_adiabatic_perturbations( N_particles, Pars, sim_rad, Sf_start, outp
             x = (2 * cp.random.random() - 1) * sim_rad
             y = (2 * cp.random.random() - 1) * sim_rad
             z = (2 * cp.random.random() - 1) * sim_rad
-            if x**2 + y**2 + z**2 <= sim_rad**2:
+            if x**2 + y**2 + z**2 <= sim_rad**2:    
+                positions.append([x, y, z])
+                
+            else: 
                 break
-        positions.append([x, y, z])
 
     positions = cp.array(positions)
 
@@ -380,6 +411,8 @@ def generate_adiabatic_perturbations( N_particles, Pars, sim_rad, Sf_start, outp
 
     perturbation_amplitude = 0.01  # Small for early universe
     density_field = 1.0 + perturbation_amplitude * (density_field - cp.mean(density_field)) / cp.std(density_field)
+    
+    
 
     particle_densities = cp.zeros(len(positions))
     for i, pos in enumerate(positions):

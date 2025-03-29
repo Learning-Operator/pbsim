@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import os
 import cupy as cp
-from functions.File_naming import get_unique_filename
+from .File_naming import get_unique_filename
 
 G = 6.67430e-11   # m^3 kg^-1 s^-2
 c = 299792458     # m/s
