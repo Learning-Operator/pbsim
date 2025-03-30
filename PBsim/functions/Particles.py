@@ -1,4 +1,4 @@
-import cupy as cp
+import numpy as np
 
 G = 6.67430e-11   # m^3 kg^-1 s^-2
 c = 299792458     # m/s
@@ -7,8 +7,8 @@ h_bar = 1.054571917e-34  # Joule*s
 class Particle:
     def __init__(self, mass, position, velocity):
         self.mass = mass
-        self.position = cp.array(position)  # Ensure position is a numpy array
-        self.velocity = cp.array(velocity)  # Ensure velocity is a numpy array
+        self.position = np.array(position)  # Ensure position is a numpy array
+        self.velocity = np.array(velocity)  # Ensure velocity is a numpy array
 
     def update_position(self, scale_factor, SF_Prev):
         """Update the physical position based on the scale factor."""
@@ -21,13 +21,13 @@ class MassParticle(Particle):
         
         self.mass = mass
         
-        self.position = cp.array(position)
+        self.position = np.array(position)
         
-        self.position_physical = cp.array(position)
-        self.velocity_physical = cp.array(velocity)
+        self.position_physical = np.array(position)
+        self.velocity_physical = np.array(velocity)
 
-        self.position_comoving = cp.array(position)
-        self.velocity_comoving = cp.array(velocity)
+        self.position_comoving = np.array(position)
+        self.velocity_comoving = np.array(velocity)
         
     def transform_to_comoving(self, phys_pos, Sf):
         return phys_pos/Sf
@@ -46,14 +46,14 @@ class RadiationParticle(Particle):
         self.type = "radiation"
         self.energy = energy
         
-        self.position = cp.array(position)
-        self.velocity = cp.array(velocity)
+        self.position = np.array(position)
+        self.velocity = np.array(velocity)
         
-        self.position_physical = cp.array(position)
-        self.velocity_physical = cp.array(velocity)
+        self.position_physical = np.array(position)
+        self.velocity_physical = np.array(velocity)
         
-        self.position_comoving = cp.array(position)
-        self.velocity_comoving = cp.array(velocity)
+        self.position_comoving = np.array(position)
+        self.velocity_comoving = np.array(velocity)
         
         self.mass = self.energy/(c**2)
         
