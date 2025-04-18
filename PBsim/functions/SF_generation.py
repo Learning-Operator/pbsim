@@ -121,14 +121,14 @@ def Expansion(Time,
         ax1 = fig.add_subplot(2, 2, 1)
         ax1.plot(time, Scale_factors, label="Scale Factor (SF)", color='b')
         
-        #time_array = time
-        #x_sqrt = np.linspace(time_array.min(), time_array.max(), 100)
-        ## Scale the sqrt function to have a similar range as the original data
-        #y_sqrt = np.sqrt(x_sqrt - time_array.min())
-        ## Scale the sqrt function to match the amplitude of the original data
-        #scaling_factor = Scale_factors.max() / y_sqrt.max()
-        #y_sqrt = y_sqrt * scaling_factor
-        #ax1.plot(x_sqrt, y_sqrt, label="Sqrt Function", color='g', linestyle='--')
+        time_array = time
+        x_sqrt = np.linspace(time_array.min(), time_array.max(), 100)
+        # Scale the sqrt function to have a similar range as the original data
+        y_sqrt = np.sqrt(x_sqrt - time_array.min())
+        # Scale the sqrt function to match the amplitude of the original data
+        scaling_factor = Scale_factors.max() / y_sqrt.max()
+        y_sqrt = y_sqrt * scaling_factor
+        ax1.plot(x_sqrt, y_sqrt, label="Sqrt Function", color='g', linestyle='--')
         
         ax1.set_xlabel("Time (s)")
         ax1.set_ylabel("Scale Factor")

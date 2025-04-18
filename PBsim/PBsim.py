@@ -14,6 +14,7 @@ from functions.Distributions import generate_uniform_distribution, \
                           generate_isocurvature_perturbations #, \
                           #particles_from_arrays, \
                           #particles_from_isocurvature
+from functions.Simulate import Oct_tree
 
 """
     Plan:
@@ -244,92 +245,93 @@ class EU_formation_sim():
                 return generate_uniform_distribution(self.N_particles, Pars= self.Pars, sim_rad= self.sim_rad, mass_velocity_range= [-100,100], output_fold = self.output_dir) # This needs to be user set!!!!
 
 
-        def compute_gravitational_acceleration(self,num_particles, positions, masses, t):             
-            
-            softening = self.softener  # how can i dynamically tweak this based on number of particles and sim size? ||| meters
+        def compute_gravitational_acceleration(self, pseudo_particles, tree, t):
+            softening = self.softener  # meters
 
-            accelerations = np.zeros((num_particles, 3)) # m/s^2
+            pseudo_particle_array = np.array([p.position for p in pseudo_particles])
 
-            for i in range(num_particles): 
-                
-                pos_diff = positions - positions[i] # m m m
-                
-                posdif_2 = positions[i] - positions # m m m
-                
-                print(f"{t}")
-                
-                mask = np.ones(len(pos_diff), dtype=bool)
-                mask[i] = False
-            
-                distances_squared = np.sum(posdif_2[mask]**2, axis=1) + softening**2 # m^2 m^2 m^2
-                
-                inv_distances = 1.0 / (distances_squared**1.5) # 1/m^3
-                   
-                acc_components = (masses[mask] * inv_distances[:, np.newaxis] * pos_diff[mask]) * (-1)  # kg m / m^3 ||| kg/m^2
-                                
-                accelerations[i] = self.G * np.sum(acc_components, axis=0) # m/s^2
-                print(accelerations[i])
-            return accelerations
+            target_particle = pseudo_particles[-1]  # The last particle in the pseudo_particles list
+
+            pos_diff = pseudo_particle_array - target_particle.position  # position diffs (N-1, 3)
+
+            mask = np.ones(len(pseudo_particle_array), dtype=bool)
+            mask[-1] = False  # Exclude the last particle (the target)
+
+            distances_squared = np.sum(pos_diff[mask]**2, axis=1) + softening**2  # m^2
+            inv_distances = 1.0 / (distances_squared**1.5)  # 1/m^3
+
+
+            mass = target_particle.mass 
+
+            acc_components = (mass * inv_distances[:, np.newaxis] * pos_diff[mask]) * (-1)  # kg * m / m^3
+
+            target_particle_acceleration = self.G * np.sum(acc_components, axis=0)  # m/s^2
+
+            return target_particle_acceleration
 
 
         def runge_kutta_step(self, particles, dt, sf, sf_dot, t):
-        
-            num_particles = len(particles) # unitless
-            masses = np.array([p.mass for p in particles])[:, np.newaxis]  # kg
-            # positions = np.array([p.position for p in particles]) # m m m 
-            # velocities = np.array([p.velocity for p in particles]) # m/s m/s m/s
+            num_particles = len(particles)
+            masses = np.array([p.mass for p in particles])[:, np.newaxis]  # shape (N, 1)
 
-            phys_positions = np.array([p.position for p in particles])  # m
-            phys_velocities = np.array([p.velocity for p in particles])  # m/s
-            
-            comoving_positions = phys_positions / sf
-            
-            Hubble = sf_dot/sf
-            hubble_flow = Hubble * phys_positions
-            peculiar_velocities = phys_velocities - hubble_flow
-            
-            comoving_velocities = sf * peculiar_velocities
+            # Extract positions and velocities in physical coordinates
+            phys_positions = np.array([p.position for p in particles])  # shape (N, 3)
+            phys_velocities = np.array([p.velocity for p in particles])  # shape (N, 3)
 
-            def acceleration(position, masses,velocity, t):
-                
-                r = position * sf
-                
-                acc = self.compute_gravitational_acceleration(num_particles=num_particles, positions=r, masses=masses, t=t)
-                
-                comoving_acc = acc / sf 
-                
-                Hubble_drag = -2 * Hubble * velocity
-                         
-                return comoving_acc + Hubble_drag
-            
+            # Hubble-related quantities
+            Hubble = sf_dot / sf
+            hubble_flow = Hubble * phys_positions  # Hubble flow in physical coordinates
+            peculiar_velocities = phys_velocities - hubble_flow  # Peculiar velocity
+            comoving_positions = phys_positions / sf  # Positions in comoving coordinates
+            comoving_velocities = sf * peculiar_velocities  # Velocities in comoving coordinates
 
-            # Compute RK4 coefficients
-            k1_v = dt * acceleration(comoving_positions, masses,velocity=comoving_velocities,t=t) # m/s, m/s, m/s
-            k1_r = dt * comoving_velocities # m m m
+            def acceleration(positions, velocities):
+                accs = np.zeros_like(velocities)
 
-            k2_v = dt * acceleration(comoving_positions + 0.5 * k1_r, masses,velocity=comoving_velocities,t=t) # m/s, m/s, m/s
-            k2_r = dt * (comoving_velocities + 0.5 * k1_v) # m m m
+                for i, p in enumerate(particles):
+                    p.position = positions[i] * sf
+                    tree = Oct_tree(Particles=particles, 
+                                        particle_choice=p,  # your target particle
+                                        root_settings=(self.sim_rad / 2, np.zeros(3), particles))  # Adjust for your needs
+                    pseudo_particles = tree.external_nodes
 
-            k3_v = dt * acceleration(comoving_positions + 0.5 * k2_r, masses,velocity=comoving_velocities,t=t) # m/s, m/s, m/s
-            k3_r = dt * (comoving_velocities + 0.5 * k2_v)# m m m
+                    phys_acc = self.compute_gravitational_acceleration(pseudo_particles, tree, t)
 
-            k4_v = dt * acceleration(comoving_positions + k3_r, masses,velocity=comoving_velocities,t=t) # m/s, m/s, m/s
-            k4_r = dt * (comoving_velocities + k3_v) # m m m
+                    comoving_acc = phys_acc / sf
+                    
+                    hubble_drag = -2 * Hubble * velocities[i]
 
-            # Update positions and velocities
-            new_comoving_positions  = comoving_positions + (k1_r + 2*k2_r + 2*k3_r + k4_r) / 6 # m, m, m
-            new_comoving_velocities  = comoving_velocities + (k1_v + 2*k2_v + 2*k3_v + k4_v) / 6 # m/s, m/s, m/s
-            
-            new_phys_positions = new_comoving_positions * sf
-            
-            new_hubble_flow = Hubble * new_phys_positions
-            new_peculiar_velocities = new_comoving_velocities / sf
-            new_phys_velocities = new_peculiar_velocities + new_hubble_flow
-            
-            # Update particle attributes
+                    accs[i] = comoving_acc + hubble_drag
+
+                return accs
+
+            # Now, use `acceleration` for the Runge-Kutta integration
+            # For example, you would now compute accelerations for particles at a given time `t`
+            accs = acceleration(phys_positions, phys_velocities)
+
+            # Perform the integration step (Runge-Kutta)
+            k1_acc = accs
+            k1_vel = phys_velocities
+
+            k2_acc = acceleration(phys_positions + 0.5 * dt * k1_vel, phys_velocities + 0.5 * dt * k1_acc)
+            k2_vel = phys_velocities + 0.5 * dt * k1_acc
+
+            k3_acc = acceleration(phys_positions + 0.5 * dt * k2_vel, phys_velocities + 0.5 * dt * k2_acc)
+            k3_vel = phys_velocities + 0.5 * dt * k2_acc
+
+            k4_acc = acceleration(phys_positions + dt * k3_vel, phys_velocities + dt * k3_acc)
+            k4_vel = phys_velocities + dt * k3_acc
+
+            # Update positions and velocities using the Runge-Kutta averages
+            new_positions = phys_positions + (dt / 6) * (k1_vel + 2 * k2_vel + 2 * k3_vel + k4_vel)
+            new_velocities = phys_velocities + (dt / 6) * (k1_acc + 2 * k2_acc + 2 * k3_acc + k4_acc)
+
+            # Apply new values to particles
             for i, p in enumerate(particles):
-                p.position = new_phys_positions[i] # m, m, m
-                p.velocity = new_phys_velocities[i] # m/s, m/s, m/s
+                p.position = new_positions[i]
+                p.velocity = new_velocities[i]
+
+
                 
         def plot_particle_phase_space(self, positions_tensor, particle_index, output_fold):
             projections = ['XY', 'XZ', 'YZ']
@@ -432,11 +434,11 @@ class EU_formation_sim():
 
 
 sim = EU_formation_sim(
-    N_Matter_particles=300,
+    N_Matter_particles=30,
     N_Radiation_particles=1,
     softener = 0.01, #  
-    Start_sf=1e-12,
-    Time=500.0,
+    Start_sf=1e-13,
+    Time=5000.0,
     dt=  1,  # Reduce time step for better stability
     delta_c=0.45,
     dist_type='Gaussian_RF',
@@ -444,7 +446,7 @@ sim = EU_formation_sim(
     
 )
 
-#sim.Run_simulation(Set_Particles_rigidly=True)
+sim.Run_simulation(Set_Particles_rigidly=True)
  
  
  

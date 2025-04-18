@@ -281,7 +281,7 @@ def generate_gaussian_RF( N_Matter_particles, N_Radiation_particles , Pars, sim_
     k_mag = np.sqrt(k_x**2 + k_y**2 + k_z**2) # meters
     k_mag[0, 0, 0] = 1  # Avoid division by zero
 
-    spectral_index = 0.96 # unitless
+    spectral_index = 0.965 # unitless
     k_cutoff = 10.0 / sim_rad  
     #k_pivot = 0.05 / sim_rad 
     

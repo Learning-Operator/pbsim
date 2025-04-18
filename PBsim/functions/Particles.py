@@ -35,6 +35,17 @@ class MassParticle(Particle):
     def transform_to_actual(self,com_pos, Sf):
         return com_pos * Sf
         
+class PseudoMassParticle():
+    def __init__(self, mass, position):
+        self.type = "mass"
+        
+        self.mass = mass
+        
+        self.position = np.array(position)
+        
+        
+
+
 
 class RadiationParticle(Particle):
     def __init__(self, energy, position, velocity):
